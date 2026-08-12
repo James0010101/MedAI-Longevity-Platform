@@ -341,8 +341,9 @@ st.markdown(f"""
         <div class="top-title">🧬 {T["title"]}</div>
         <div class="top-subtitle">{T["subtitle"]}</div>
     </div>
-    <div style="display:flex; align-items:center; gap:12px;">
-        <span style="background-color:#eef6ee; color:#006c49; padding:4px 12px; border-radius:100px; font-weight:700; font-size:12px;">Clinical AI v3.0 (Pre-Trained)</span>
+    <div style="display:flex; align-items:center; gap:10px;">
+        <span style="background-color:#006c49; color:#ffffff; padding:6px 16px; border-radius:100px; font-weight:700; font-size:12px; letter-spacing:0.02em;">✨ Master Your Lifespan</span>
+        <span style="background-color:#eef6ee; color:#006c49; padding:6px 14px; border-radius:100px; font-weight:700; font-size:12px;">Clinical AI v3.0</span>
     </div>
 </div>
 """, unsafe_allow_html=True)
