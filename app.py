@@ -1,192 +1,184 @@
+import os
+import json
 import streamlit as st
 import numpy as np
-import matplotlib.pyplot as plt
-from sklearn.datasets import make_moons, make_blobs, make_classification
-import importlib
-import textwrap
-import json
-import neural_network
-importlib.reload(neural_network)
-from neural_network import NeuralNetwork
+from sklearn.decomposition import PCA
+import plotly.express as px
+import plotly.graph_objects as go
 
-st.set_page_config(page_title="Practical AI System - Neural Network Playground", layout="wide", initial_sidebar_state="expanded")
+from neural_network import MultiTaskNeuralNetwork
+from dataset_manager import get_medical_dataset, normalize
 
-# --- Real-World Datasets Config ---
-DATASETS_CONFIG = {
-    "medical": {
-        "ru": {
-            "name": "🩺 Медицинская диагностика (Риск диабета)",
-            "x1_name": "Уровень глюкозы (мг/дл)",
-            "x2_name": "Индекс массы тела (ИМТ)",
-            "class_0": "🔴 Низкий риск",
-            "class_1": "🔵 Высокий риск",
-            "desc": "Экспресс-оценка риска диабета на основе анализа крови и ИМТ пациента.",
-            "x1_min": 70.0, "x1_max": 200.0, "x1_default": 135.0, "x1_step": 1.0,
-            "x2_min": 15.0, "x2_max": 45.0, "x2_default": 29.0, "x2_step": 0.5,
-        },
-        "en": {
-            "name": "🩺 Medical Diagnosis (Diabetes Risk)",
-            "x1_name": "Blood Glucose (mg/dL)",
-            "x2_name": "Body Mass Index (BMI)",
-            "class_0": "🔴 Low Risk",
-            "class_1": "🔵 High Risk",
-            "desc": "Express diabetes risk assessment based on blood glucose and BMI.",
-            "x1_min": 70.0, "x1_max": 200.0, "x1_default": 135.0, "x1_step": 1.0,
-            "x2_min": 15.0, "x2_max": 45.0, "x2_default": 29.0, "x2_step": 0.5,
-        }
-    },
-    "credit": {
-        "ru": {
-            "name": "💳 Банковский скоринг (Одобрение кредита)",
-            "x1_name": "Доход в месяц ($)",
-            "x2_name": "Кредитный рейтинг (300-850)",
-            "class_0": "🔴 Отказ в кредите",
-            "class_1": "🔵 Одобрено",
-            "desc": "Автоматическая оценка платежеспособности клиента для выдачи заема.",
-            "x1_min": 1000.0, "x1_max": 15000.0, "x1_default": 4500.0, "x1_step": 250.0,
-            "x2_min": 300.0, "x2_max": 850.0, "x2_default": 640.0, "x2_step": 5.0,
-        },
-        "en": {
-            "name": "💳 Credit Scoring (Loan Approval)",
-            "x1_name": "Monthly Income ($)",
-            "x2_name": "Credit Score (300-850)",
-            "class_0": "🔴 Loan Rejected",
-            "class_1": "🔵 Loan Approved",
-            "desc": "Automated applicant creditworthiness scoring system for banks.",
-            "x1_min": 1000.0, "x1_max": 15000.0, "x1_default": 4500.0, "x1_step": 250.0,
-            "x2_min": 300.0, "x2_max": 850.0, "x2_default": 640.0, "x2_step": 5.0,
-        }
-    },
-    "factory": {
-        "ru": {
-            "name": "🏭 Промышленность (Контроль брака деталей)",
-            "x1_name": "Отклонение размера (мм)",
-            "x2_name": "Твердость сплава (HRC)",
-            "class_0": "🔴 Бракованная деталь",
-            "class_1": "🔵 Годная деталь",
-            "desc": "Автоматизированная браковка изделий на конвейере по датчикам качества.",
-            "x1_min": -1.0, "x1_max": 1.0, "x1_default": 0.05, "x1_step": 0.02,
-            "x2_min": 20.0, "x2_max": 65.0, "x2_default": 48.0, "x2_step": 0.5,
-        },
-        "en": {
-            "name": "🏭 Industrial Quality Control (Defect Inspection)",
-            "x1_name": "Size Deviation (mm)",
-            "x2_name": "Alloy Hardness (HRC)",
-            "class_0": "🔴 Defective Part",
-            "class_1": "🔵 Passed Inspection",
-            "desc": "Automated factory conveyor defect detector based on sensor readings.",
-            "x1_min": -1.0, "x1_max": 1.0, "x1_default": 0.05, "x1_step": 0.02,
-            "x2_min": 20.0, "x2_max": 65.0, "x2_default": 48.0, "x2_step": 0.5,
-        }
-    },
-    "academic": {
-        "ru": {
-            "name": "🌀 Академический тест (Два полумесяца)",
-            "x1_name": "Координата X₁",
-            "x2_name": "Координата X₂",
-            "class_0": "🔴 Класс 0",
-            "class_1": "🔵 Класс 1",
-            "desc": "Классический синтетический датасет для проверки нелинейного разделения.",
-            "x1_min": -1.5, "x1_max": 2.5, "x1_default": 0.5, "x1_step": 0.05,
-            "x2_min": -1.0, "x2_max": 1.5, "x2_default": 0.2, "x2_step": 0.05,
-        },
-        "en": {
-            "name": "🌀 Academic Benchmark (Make Moons)",
-            "x1_name": "X₁ Coordinate",
-            "x2_name": "X₂ Coordinate",
-            "class_0": "🔴 Class 0",
-            "class_1": "🔵 Class 1",
-            "desc": "Classic synthetic benchmark dataset for testing non-linear classification.",
-            "x1_min": -1.5, "x1_max": 2.5, "x1_default": 0.5, "x1_step": 0.05,
-            "x2_min": -1.0, "x2_max": 1.5, "x2_default": 0.2, "x2_step": 0.05,
-        }
-    }
-}
+st.set_page_config(
+    page_title="MedAI Longevity Suite | Executive Platform",
+    page_icon="🧬",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-# --- Localization Dictionary ---
+WEIGHTS_FILE = "model_weights.npz"
+
+# ────────────────── INTERNATIONALIZATION (I18N) ──────────────────
 I18N = {
     "ru": {
-        "page_title": "🧠 Практический ИИ-комплекс (Нейросеть с нуля)",
-        "page_caption": "**Практическое применение ИИ в реальной жизни:** Медицина, Банковский скоринг и Промышленный контроль качества.",
-        "params_header": "### Настройки и Модель",
-        "dataset_select": "📂 Режим применения ИИ",
-        "neurons": "Количество нейронов",
-        "learning_rate": "Скорость обучения (Learning Rate)",
-        "train_until_perfect": "Обучать до 100% точности",
-        "epochs": "Количество эпох",
-        "noise": "Уровень шума данных",
-        "performance": "##### 📊 Производительность ИИ",
-        "run_training": "🚀 ЗАПУСТИТЬ ОБУЧЕНИЕ ИИ",
-        "tabs": ["Динамика", "Инженерные результаты", "Связи и Веса", "💾 Экспорт модели"],
-        "boundary_title": "Разделяющая граница ИИ (Эпоха {epoch})",
-        "loss": "Ошибка (Loss)",
+        "title": "MedAI Longevity Platform",
+        "subtitle": "Система Нейросетевой Клинической Диагностики, Оценки Рисков и 20-Летнего Прогнозирования Долголетия",
+        "params_header": "Конфигурация нейросети",
+        "data_header": "Источник данных",
+        "dataset_fused": "🌐 Сводный Клинический Датасет (10,000+ записей)",
+        "num_layers": "Скрытых слоев",
+        "neurons_l1": "Нейронов в слое 1",
+        "neurons_l2": "Нейронов в слое 2",
+        "neurons_l3": "Нейронов в слое 3",
+        "neurons_l4": "Нейронов в слое 4",
+        "learning_rate": "Скорость обучения (LR)",
+        "epochs": "Эпохи обучения",
+        "l2_reg": "L2 Регуляризация",
+        "run_training": "Дообучить модель на датасете",
+        "save_weights_btn": "Сохранить веса",
+        "reset_weights_btn": "Сбросить веса",
+        "performance": "Динамика ошибки (Loss)",
+        "tabs": [
+            "📊 Метрики ИИ",
+            "3D Кластеры",
+            "📈 Прогноз 20 лет",
+            "🕸️ Радар признаков",
+            "🔍 XAI Вклад"
+        ],
+        "training_tab_title": "Архитектура и результаты обучения",
+        "arch_title": "Архитектура нейросети",
+        "loss_title": "Динамика функции потерь",
+        "eval_title": "Метрики на обучающей выборке",
         "accuracy": "Точность",
-        "epoch": "Эпоха",
-        "input_layer": "Вход (2)",
-        "hidden_layer": "Скрытый ({count})",
-        "output_layer": "Выход (1)",
-        "eng_results_title": "Инженерные результаты (The Engineering Results)",
-        "epoch_0_hdr": "Эпоха 0 (Инициализация)",
-        "random_init": "Случайный старт",
-        "status": "СТАТУС",
-        "prediction": "ПРЕДСКАЗАНИЕ",
-        "target_acquired": "Цель достигнута ({val:.2f})",
-        "convergence_mode": "Режим сходимости",
-        "convergence": "Сходимость",
-        "training": "Обучение",
-        "blueprint_caption": "За <b>{epoch:,}</b> итераций чистой матричной алгебры система успешно связала входные данные с точной целью без единой строчки сторонних фреймворков ИИ. Черный ящик официально стал прозрачным.",
-        "inspector_title": "##### 🎯 Практический ИИ-сканер в реальном времени",
-        "inspector_caption": "Задайте параметры объекта в реальных единицах измерения и получите мгновенный точный диагноз / вердикт ИИ.",
-        "raw_pred_hdr": "ВЕРОЯТНОСТЬ ИИ (СИГМОИДА)",
-        "decided_class": "Вердикт ИИ",
-        "complete_delta": "Завершено",
-        "export_title": "##### 💾 Экспорт обученной нейросети для реальных программ",
-        "export_desc": "Вы можете скопировать веса нейросети или готовый Python-код для внедрения в сторонние проекты.",
-        "copy_code": "Готовый Python-скрипт для применения весов:"
+        "mae": "Средняя абс. ошибка (MAE)",
+        "cardiac_risk_hdr": "Кардио-риск (CI 95%)",
+        "diabetes_risk_hdr": "Риск Диабета II (CI 95%)",
+        "life_exp_hdr": "Ожидаемая жизнь (CI 95%)",
+        "vascular_age_hdr": "Сосудистый возраст (CI 95%)",
+        "recommendations_hdr": "Персонализированный клинический план долголетия",
+        "symptoms_hdr": "Анализ причин и возможных симптомов",
+        "xai_hdr": "Explainable AI (XAI): Вклад каждого биомаркера (%)",
+        "xai_xlabel": "Вклад признака (%)",
+        "what_if_hdr": "Симулятор медицинских вмешательств «Что, если?»",
+        "report_btn": "📥 Скачать клинический отчёт (HTML / PDF)",
+        "fhir_btn": "🌐 Скачать запись в формате HL7 FHIR (JSON)",
+        "high_risk": "ВЫСОКИЙ РИСК",
+        "low_risk": "НИЗКИЙ РИСК",
+        "years": "лет",
+        "vs_baseline": "к базовой",
+        "vs_chrono": "к паспортному",
+        "low_risk_label": "Низкий риск",
+        "high_risk_label": "Высокий риск",
+        "healthy_cluster": "Здоровый кластер",
+        "pathology_cluster": "Кластер патологии",
+        "bp_label": "Давление (мм рт.ст.)",
+        "chol_label": "Холестерин (мг/дл)",
+        "sim_quit_smoke": "Отказ от курения",
+        "sim_lower_bp": "Нормализация давления (120 мм)",
+        "sim_max_act": "Максимальная физ. активность (100%)",
+        "sim_result_title": "Результат вмешательства:",
+        "sim_cardiac_fmt": "Кардио-риск: {before:.1f}% ➔ {after:.1f}% ({diff:+.1f}%)",
+        "sim_life_fmt": "Продолжительность жизни: {before:.1f} ➔ {after:.1f} ({diff:+.1f} лет)",
+        "slider_age": "Возраст (лет)",
+        "slider_sex": "Пол",
+        "slider_bp": "Давление (мм рт.ст.)",
+        "slider_chol": "Холестерин (мг/дл)",
+        "slider_glucose": "Глюкоза (мг/дл)",
+        "slider_max_hr": "Макс. пульс",
+        "slider_st_dep": "Депрессия ST (мм)",
+        "slider_bmi": "ИМТ (BMI)",
+        "slider_activity": "Физ. активность (0..1)",
+        "slider_smoking": "Курение",
+        "sex_male": "Мужской ♂",
+        "sex_female": "Женский ♀",
+        "smoke_no": "Нет",
+        "smoke_yes": "Да",
+        "trajectory_title": "Прогноз долголетия и риска на 20 лет вперед",
+        "radar_title": "Отклонение биомаркеров пациента от нормы здоровой когорты",
+        "presets_hdr": "Быстрый выбор профиля пациента:"
     },
     "en": {
-        "page_title": "🧠 Practical AI System (Neural Network from Scratch)",
-        "page_caption": "**Real-World AI Applications:** Medical Diagnosis, Credit Scoring, and Industrial Quality Control.",
-        "params_header": "### Settings & Model",
-        "dataset_select": "📂 Real-World AI Application",
-        "neurons": "Neurons",
-        "learning_rate": "Learning Rate",
-        "train_until_perfect": "Train until 100% accuracy",
-        "epochs": "Epochs",
-        "noise": "Noise Level",
-        "performance": "##### 📊 AI Performance",
-        "run_training": "🚀 RUN AI TRAINING",
-        "tabs": ["Dynamics", "Engineering Results", "Weights", "💾 Export Model"],
-        "boundary_title": "AI Decision Boundary (Epoch {epoch})",
-        "loss": "Loss",
+        "title": "MedAI Longevity Platform",
+        "subtitle": "Multi-Dataset Neural Clinical Diagnostics, MC Uncertainty (CI 95%) & 20-Year Trajectory",
+        "params_header": "Neural Architecture Config",
+        "data_header": "Data Source",
+        "dataset_fused": "🌐 Master Clinical Dataset (10,000+ records)",
+        "num_layers": "Hidden Layers Count",
+        "neurons_l1": "Layer 1 Neurons",
+        "neurons_l2": "Layer 2 Neurons",
+        "neurons_l3": "Layer 3 Neurons",
+        "neurons_l4": "Layer 4 Neurons",
+        "learning_rate": "Learning Rate (LR)",
+        "epochs": "Training Epochs",
+        "l2_reg": "L2 Regularization",
+        "run_training": "Run Incremental Training",
+        "save_weights_btn": "Save Model Weights",
+        "reset_weights_btn": "Reset Weights",
+        "performance": "Loss Dynamics",
+        "tabs": [
+            "📊 AI Metrics",
+            "3D Clusters",
+            "📈 20Y Forecast",
+            "🕸️ Radar",
+            "🔍 XAI Contribution"
+        ],
+        "training_tab_title": "Architecture & Training Results",
+        "arch_title": "Neural Network Architecture",
+        "loss_title": "Loss Dynamics",
+        "eval_title": "Training Evaluation Metrics",
         "accuracy": "Accuracy",
-        "epoch": "Epoch",
-        "input_layer": "Input (2)",
-        "hidden_layer": "Hidden ({count})",
-        "output_layer": "Output (1)",
-        "eng_results_title": "The Engineering Results",
-        "epoch_0_hdr": "Epoch 0 (Initialization)",
-        "random_init": "Random Init",
-        "status": "STATUS",
-        "prediction": "PREDICTION",
-        "target_acquired": "Target Acquired ({val:.2f})",
-        "convergence_mode": "Convergence Mode",
-        "convergence": "Convergence",
-        "training": "Training",
-        "blueprint_caption": "Through <b>{epoch:,}</b> iterations of pure matrix calculus, the system successfully mapped static inputs to an exact target without a single line of high-level AI framework code. The black box is officially a glass box.",
-        "inspector_title": "##### 🎯 Real-World Live AI Inspector",
-        "inspector_caption": "Set custom real-world parameters in actual units to receive an immediate AI classification verdict.",
-        "raw_pred_hdr": "AI PROBABILITY OUTPUT (SIGMOID)",
-        "decided_class": "AI Verdict",
-        "complete_delta": "Complete",
-        "export_title": "##### 💾 Export Trained Model Weights for Real Apps",
-        "export_desc": "You can export trained neural network weights or raw standalone Python code for production integration.",
-        "copy_code": "Standalone Python Script for Weight Inference:"
+        "mae": "Mean Abs. Error (MAE)",
+        "cardiac_risk_hdr": "Cardiac Risk (CI 95%)",
+        "diabetes_risk_hdr": "Diabetes II Risk (CI 95%)",
+        "life_exp_hdr": "Life Expectancy (CI 95%)",
+        "vascular_age_hdr": "Vascular Age (CI 95%)",
+        "recommendations_hdr": "Personalized Action Plan",
+        "symptoms_hdr": "Root Causes & Symptom Trigger Analysis",
+        "xai_hdr": "Explainable AI (XAI): Feature Contribution (%)",
+        "xai_xlabel": "Feature Contribution (%)",
+        "what_if_hdr": "'What-If' Intervention Simulator",
+        "report_btn": "📥 Download Clinical Report (HTML / PDF)",
+        "fhir_btn": "🌐 Export HL7 FHIR Record (JSON)",
+        "high_risk": "HIGH RISK",
+        "low_risk": "LOW RISK",
+        "years": "yrs",
+        "vs_baseline": "vs baseline",
+        "vs_chrono": "vs chronological",
+        "low_risk_label": "Low Risk",
+        "high_risk_label": "High Risk",
+        "healthy_cluster": "Healthy Cluster",
+        "pathology_cluster": "Pathology Cluster",
+        "bp_label": "Resting BP (mmHg)",
+        "chol_label": "Serum Cholesterol (mg/dL)",
+        "sim_quit_smoke": "Smoking Cessation",
+        "sim_lower_bp": "BP Normalization (120 mmHg)",
+        "sim_max_act": "Physical Activity (100%)",
+        "sim_result_title": "Intervention Result:",
+        "sim_cardiac_fmt": "Cardiac Risk: {before:.1f}% ➔ {after:.1f}% ({diff:+.1f}%)",
+        "sim_life_fmt": "Life Expectancy: {before:.1f} ➔ {after:.1f} ({diff:+.1f} yrs)",
+        "slider_age": "Age (years)",
+        "slider_sex": "Sex",
+        "slider_bp": "BP (mmHg)",
+        "slider_chol": "Cholesterol (mg/dL)",
+        "slider_glucose": "Glucose (mg/dL)",
+        "slider_max_hr": "Max HR (bpm)",
+        "slider_st_dep": "ST Depression (mm)",
+        "slider_bmi": "BMI (kg/m²)",
+        "slider_activity": "Activity (0..1)",
+        "slider_smoking": "Smoking",
+        "sex_male": "Male ♂",
+        "sex_female": "Female ♀",
+        "smoke_no": "No",
+        "smoke_yes": "Yes",
+        "trajectory_title": "20-Year Health & Longevity Trajectory Forecast",
+        "radar_title": "Patient Biomarker Deviation vs Healthy Peer Baseline",
+        "presets_hdr": "Quick Patient Profile Presets:"
     }
 }
 
+# Sidebar Language Selection
 with st.sidebar:
-    st.markdown("**🌐 Language / Язык**")
+    st.markdown("<div style='font-size: 11px; font-weight: 700; color: #64748b; letter-spacing: 0.08em; margin-bottom: 8px;'>LANGUAGE / ЯЗЫК</div>", unsafe_allow_html=True)
     selected_lang_label = st.segmented_control(
         "Language Selection",
         ["Русский 🇷🇺", "English 🇺🇸"],
@@ -196,479 +188,811 @@ with st.sidebar:
     lang_code = "en" if selected_lang_label == "English 🇺🇸" else "ru"
     T = I18N[lang_code]
 
+# 🎨 CLINICAL EMERALD HIGH-END CSS (Material 3 Clinical Design)
 st.markdown("""
 <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap');
+    
+    html, body, [class*="css"] {
+        font-family: 'Inter', sans-serif;
+    }
+    
     .stApp {
-        background-color: #080c14;
+        background-color: #f4fbf4;
+        color: #161d19;
     }
+    
+    /* Executive Header */
+    .top-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 20px 32px;
+        border-bottom: 1px solid #eef6ee;
+        background-color: #ffffff;
+        margin: -4rem -4rem 28px -4rem;
+        box-shadow: 0 4px 20px rgba(0, 108, 73, 0.05);
+        border-bottom-left-radius: 24px;
+        border-bottom-right-radius: 24px;
+    }
+    
+    .top-title {
+        font-size: 24px;
+        font-weight: 700;
+        color: #006c49;
+        letter-spacing: -0.01em;
+        margin-bottom: 2px;
+    }
+    
+    .top-subtitle {
+        font-size: 13px;
+        color: #6c7a71;
+    }
+    
     div[data-testid="stSidebar"] {
-        background-color: #0e131f;
-        border-right: 1px solid #1e293b;
+        background-color: #f4fbf4;
+        border-right: 1px solid #eef6ee;
     }
-    div[data-testid="stMetricValue"] {
-        font-size: 26px !important;
-        font-weight: 700 !important;
-        color: #f8fafc !important;
+    
+    /* Clean Cards & Container Borders */
+    div[data-testid="stForm"], div[data-testid="stVerticalBlockBorderWrapper"] > div {
+        background-color: #ffffff !important;
+        border: 1px solid #eef6ee !important;
+        border-radius: 16px !important;
+        padding: 18px !important;
+        box-shadow: 0px 4px 16px rgba(0, 108, 73, 0.03) !important;
     }
-    div[data-testid="stMetricLabel"] {
-        font-size: 12px !important;
-        color: #64748b !important;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
+    
+    /* Smooth Pill Buttons */
     .stButton>button {
-        border-radius: 8px;
+        border-radius: 100px;
         font-weight: 600;
-        letter-spacing: 0.5px;
-        background-color: #2563eb;
+        font-size: 13px;
+        background-color: #006c49;
         color: white;
         border: none;
+        box-shadow: 0px 4px 12px rgba(0, 108, 73, 0.15);
+        transition: all 0.25s ease;
+        padding: 10px 20px;
     }
+    
     .stButton>button:hover {
-        background-color: #1d4ed8;
+        background-color: #005236;
+        box-shadow: 0px 6px 16px rgba(0, 108, 73, 0.25);
+        transform: translateY(-1px);
+        color: white;
+    }
+    
+    /* Smooth Tabs */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+        border-bottom: 2px solid #eef6ee;
+        padding-bottom: 4px;
+        margin-bottom: 16px;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        background: transparent;
+        border-radius: 100px;
+        border: none;
+        padding: 8px 16px;
+        color: #6c7a71;
+        font-weight: 600;
+        font-size: 13px;
+        transition: all 0.2s ease;
+    }
+    
+    .stTabs [aria-selected="true"] {
+        background: #eef6ee !important;
+        color: #006c49 !important;
+        box-shadow: inset 0px 0px 0px 1px #dde4dd;
+    }
+    
+    /* Custom Telemetry Card Styling */
+    .telemetry-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        padding: 16px;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 4px 14px rgba(0, 108, 73, 0.04);
+        transition: transform 0.2s ease;
+    }
+    .telemetry-card:hover {
+        transform: translateY(-2px);
+    }
+    .telemetry-indicator {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 4px;
+        height: 100%;
+    }
+    .telemetry-label {
+        font-size: 11px;
+        font-weight: 700;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    .telemetry-value {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 22px;
+        font-weight: 700;
+        color: #0f172a;
+        margin-top: 6px;
+    }
+    .telemetry-badge {
+        font-size: 11px;
+        font-weight: 700;
+        padding: 3px 8px;
+        border-radius: 100px;
+        display: inline-block;
+        margin-top: 6px;
     }
 </style>
 """, unsafe_allow_html=True)
 
-st.title(T["page_title"])
-st.caption(T["page_caption"])
+# 🏛️ Top Header Bar
+st.markdown(f"""
+<div class="top-header">
+    <div>
+        <div class="top-title">🧬 {T["title"]}</div>
+        <div class="top-subtitle">{T["subtitle"]}</div>
+    </div>
+    <div style="display:flex; align-items:center; gap:12px;">
+        <span style="background-color:#eef6ee; color:#006c49; padding:4px 12px; border-radius:100px; font-weight:700; font-size:12px;">Clinical AI v3.0 (Pre-Trained)</span>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
+# ────────────────── SIDEBAR: DATASET & HYPERPARAMETERS ──────────────────
 with st.sidebar:
-    st.markdown(T["params_header"])
+    st.markdown(f"<div style='font-size: 11px; font-weight: 700; color: #64748b; letter-spacing: 0.08em; margin-bottom: 8px;'>{T['data_header'].upper()}</div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='font-size: 13px; font-weight: 700; color: #006c49; margin-bottom: 12px;'>{T['dataset_fused']}</div>", unsafe_allow_html=True)
     
-    dataset_keys = list(DATASETS_CONFIG.keys())
-    dataset_labels = [DATASETS_CONFIG[k][lang_code]["name"] for k in dataset_keys]
-    selected_dataset_label = st.selectbox(T["dataset_select"], dataset_labels, index=0)
-    selected_dataset_key = dataset_keys[dataset_labels.index(selected_dataset_label)]
-    ds_info = DATASETS_CONFIG[selected_dataset_key][lang_code]
+    data_source_key = "fused_master"
+    custom_csv_file = None
+
+    with st.expander("⚙️ " + T["params_header"], expanded=False):
+        num_hidden = st.slider(T["num_layers"], min_value=1, max_value=4, value=2, step=1)
+        n_l1 = st.slider(T["neurons_l1"], min_value=8, max_value=256, value=64, step=8)
+        n_l2, n_l3, n_l4 = 32, 16, 8
+        
+        if num_hidden >= 2:
+            n_l2 = st.slider(T["neurons_l2"], min_value=4, max_value=256, value=32, step=4)
+        if num_hidden >= 3:
+            n_l3 = st.slider(T["neurons_l3"], min_value=4, max_value=128, value=16, step=4)
+        if num_hidden >= 4:
+            n_l4 = st.slider(T["neurons_l4"], min_value=2, max_value=64, value=8, step=2)
+            
+        hidden_sizes = [n_l1]
+        if num_hidden >= 2: hidden_sizes.append(n_l2)
+        if num_hidden >= 3: hidden_sizes.append(n_l3)
+        if num_hidden >= 4: hidden_sizes.append(n_l4)
+
+        st.markdown("---")
+        learning_rate = st.slider(T["learning_rate"], min_value=0.001, max_value=0.05, value=0.01, step=0.001, format="%.3f")
+        epochs = st.slider(T["epochs"], min_value=100, max_value=10000, value=2000, step=500)
+        l2_reg = st.slider(T["l2_reg"], min_value=0.0, max_value=0.005, value=0.0005, step=0.0005, format="%.4f")
+        
+        run_training_btn = st.button(T["run_training"], use_container_width=True)
     
-    st.caption(f"ℹ️ *{ds_info['desc']}*")
     st.markdown("---")
-    
-    hidden_neurons = st.slider(T["neurons"], min_value=2, max_value=500, value=16, step=1)
-    learning_rate = st.slider(T["learning_rate"], min_value=0.01, max_value=10.0, value=0.5, step=0.01)
-    
-    st.markdown("---")
-    train_until_perfect = st.checkbox(T["train_until_perfect"], value=False)
-    epochs = st.slider(T["epochs"], min_value=100, max_value=50000, value=1000, step=100, disabled=train_until_perfect)
-    
-    st.markdown("---")
-    noise_level = st.slider(T["noise"], min_value=0.0, max_value=0.5, value=0.15, step=0.05)
 
-def get_real_dataset(ds_key, noise, ds_meta):
-    np.random.seed(42)
-    if ds_key == "academic":
-        raw_X, raw_y = make_moons(n_samples=400, noise=noise, random_state=42)
-        norm_X = raw_X
-    elif ds_key == "medical":
-        # Glucose vs BMI classification
-        raw_X, raw_y = make_moons(n_samples=400, noise=noise, random_state=42)
-        norm_X = raw_X
-    elif ds_key == "credit":
-        # Monthly Income vs Credit Score
-        raw_X, raw_y = make_moons(n_samples=400, noise=noise, random_state=42)
-        norm_X = raw_X
-    else:
-        # Factory Quality Inspection
-        raw_X, raw_y = make_moons(n_samples=400, noise=noise, random_state=42)
-        norm_X = raw_X
+# ────────────────── DATASET LOAD & MODEL PERSISTENCE ──────────────────
+@st.cache_data
+def load_data(source_name, csv_handle=None):
+    return get_medical_dataset(n_samples=3000, source=source_name, csv_file=csv_handle)
 
-    return norm_X, raw_y.reshape(-1, 1)
+data_dict = load_data(data_source_key, custom_csv_file)
+X_train = data_dict["X_train"]
+y_cardiac_train = data_dict["y_cardiac_train"]
+y_diabetes_train = data_dict["y_diabetes_train"]
+y_life_train = data_dict["y_life_train"]
+y_vascular_train = data_dict["y_vascular_train"]
 
-def norm_to_real(x1_norm, x2_norm, ds_meta):
-    # Map normalized [-1.5, 2.5] and [-1.0, 1.5] to actual physical units
-    x1_real = ds_meta["x1_min"] + (x1_norm - (-1.5)) / (2.5 - (-1.5)) * (ds_meta["x1_max"] - ds_meta["x1_min"])
-    x2_real = ds_meta["x2_min"] + (x2_norm - (-1.0)) / (1.5 - (-1.0)) * (ds_meta["x2_max"] - ds_meta["x2_min"])
-    return x1_real, x2_real
+norm_X = data_dict["norm_X"]
+y_cardiac = data_dict["y_cardiac"]
+mins = np.array([1.0, 0.0, 50.0, 50.0, 40.0, 40.0, 0.0, 10.0, 0.0, 0.0])
+maxs = np.array([120.0, 1.0, 250.0, 500.0, 400.0, 220.0, 6.0, 60.0, 1.0, 1.0])
 
-def real_to_norm(x1_real, x2_real, ds_meta):
-    x1_norm = -1.5 + (x1_real - ds_meta["x1_min"]) / (ds_meta["x1_max"] - ds_meta["x1_min"]) * (2.5 - (-1.5))
-    x2_norm = -1.0 + (x2_real - ds_meta["x2_min"]) / (ds_meta["x2_max"] - ds_meta["x2_min"]) * (1.5 - (-1.0))
-    return x1_norm, x2_norm
+if 'hidden_sizes' not in locals():
+    hidden_sizes = [64, 32]
 
-X, y = get_real_dataset(selected_dataset_key, noise=noise_level, ds_meta=ds_info)
-
-col_left, col_right = st.columns([1.6, 1.2])
-
-with col_left:
-    plot_placeholder = st.empty()
-
-with col_right:
-    with st.container(border=True):
-        st.markdown(T["performance"])
-        m_col1, m_col2 = st.columns(2)
-        with m_col1:
-            epoch_metric = st.empty()
-        with m_col2:
-            acc_metric = st.empty()
-        
-        progress_bar = st.progress(0)
-        train_button = st.button(T["run_training"], type="primary", width="stretch")
-    
-    chart_tab1, chart_tab2, chart_tab3, chart_tab4 = st.tabs(T["tabs"])
-    with chart_tab1:
-        loss_chart_placeholder = st.empty()
-    with chart_tab2:
-        results_card_placeholder = st.empty()
-    with chart_tab3:
-        weights_chart_placeholder = st.empty()
-    with chart_tab4:
-        export_placeholder = st.empty()
-
-def draw_plot(model, X, y, epoch, loss, ds_meta):
-    fig, ax = plt.subplots(figsize=(6.5, 5.2), dpi=100)
-    fig.patch.set_facecolor('#080c14')
-    ax.set_facecolor('#080c14')
-    
-    x_min, x_max = X[:, 0].min() - 0.4, X[:, 0].max() + 0.4
-    y_min, y_max = X[:, 1].min() - 0.4, X[:, 1].max() + 0.4
-    xx, yy = np.meshgrid(np.arange(x_min, x_max, 0.02),
-                         np.arange(y_min, y_max, 0.02))
-    
-    Z = model.forward(np.c_[xx.ravel(), yy.ravel()])
-    Z = Z.reshape(xx.shape)
-    
-    ax.contourf(xx, yy, Z, levels=[0, 0.5, 1], colors=['#ef4444', '#3b82f6'], alpha=0.25)
-    ax.contour(xx, yy, Z, levels=[0.5], colors=['#f8fafc'], linewidths=2.0)
-    
-    ax.scatter(X[y[:,0]==0][:, 0], X[y[:,0]==0][:, 1], color='#f87171', edgecolors='#ffffff', marker='o', s=30, linewidths=1.0, label=ds_meta["class_0"])
-    ax.scatter(X[y[:,0]==1][:, 0], X[y[:,0]==1][:, 1], color='#60a5fa', edgecolors='#ffffff', marker='o', s=30, linewidths=1.0, label=ds_meta["class_1"])
-    
-    ax.set_title(T["boundary_title"].format(epoch=epoch), fontsize=12, color='#94a3b8', pad=10)
-    ax.legend(loc='upper right', frameon=True, facecolor='#0e131f', edgecolor='#1e293b', labelcolor='#f8fafc', fontsize=9)
-    ax.axis('off')
-    plt.tight_layout()
-    return fig
-
-def draw_loss_curve(epochs_list, loss_list, acc_list):
-    fig, ax1 = plt.subplots(figsize=(5.0, 2.8), dpi=100)
-    fig.patch.set_facecolor('#080c14')
-    ax1.set_facecolor('#080c14')
-    
-    c_loss = '#f87171'
-    c_acc = '#60a5fa'
-    
-    ax1.plot(epochs_list, loss_list, color=c_loss, linewidth=1.8, label=T["loss"])
-    ax1.set_xlabel(T["epoch"], color='#64748b', fontsize=9)
-    ax1.set_ylabel(T["loss"], color=c_loss, fontsize=9)
-    ax1.tick_params(axis='x', colors='#64748b', labelsize=8)
-    ax1.tick_params(axis='y', colors=c_loss, labelsize=8)
-    
-    ax2 = ax1.twinx()
-    ax2.plot(epochs_list, [a * 100 for a in acc_list], color=c_acc, linewidth=1.8, linestyle='--', label=T["accuracy"])
-    ax2.set_ylabel(f"{T['accuracy']} (%)", color=c_acc, fontsize=9)
-    ax2.tick_params(axis='y', colors=c_acc, labelsize=8)
-    
-    for spine in ax1.spines.values():
-        spine.set_color('#1e293b')
-    for spine in ax2.spines.values():
-        spine.set_color('#1e293b')
-        
-    plt.tight_layout()
-    return fig
-
-def draw_network_diagram(model):
-    fig, ax = plt.subplots(figsize=(5.0, 2.8), dpi=100)
-    fig.patch.set_facecolor('#080c14')
-    ax.set_facecolor('#080c14')
-    
-    W1 = model.W1
-    W2 = model.W2
-    hidden_count = W1.shape[1]
-    disp_count = min(hidden_count, 8)
-    
-    layer_x = [0.1, 0.5, 0.9]
-    in_y = [0.35, 0.65]
-    hid_y = np.linspace(0.15, 0.85, disp_count)
-    out_y = [0.5]
-    
-    w1_max = np.max(np.abs(W1)) + 1e-5
-    w2_max = np.max(np.abs(W2)) + 1e-5
-    
-    for i in range(2):
-        for j in range(disp_count):
-            w = W1[i, j]
-            alpha = min(1.0, max(0.1, abs(w) / w1_max))
-            lw = min(2.0, max(0.4, abs(w) / w1_max * 2.0))
-            color = '#60a5fa' if w > 0 else '#f87171'
-            ax.plot([layer_x[0], layer_x[1]], [in_y[i], hid_y[j]], color=color, alpha=alpha, linewidth=lw)
+# Auto-Load Model Weights
+if 'nn_model' not in st.session_state:
+    if os.path.exists(WEIGHTS_FILE):
+        try:
+            loaded_nn = MultiTaskNeuralNetwork.load_model(WEIGHTS_FILE)
+            st.session_state['nn_model'] = loaded_nn
+            st.session_state['last_hidden'] = loaded_nn.hidden_sizes
+        except Exception as e:
+            st.warning(f"Note: Resetting model initialization ({e})")
             
-    for j in range(disp_count):
-        w = W2[j, 0]
-        alpha = min(1.0, max(0.1, abs(w) / w2_max))
-        lw = min(2.0, max(0.4, abs(w) / w2_max * 2.0))
-        color = '#60a5fa' if w > 0 else '#f87171'
-        ax.plot([layer_x[1], layer_x[2]], [hid_y[j], out_y[0]], color=color, alpha=alpha, linewidth=lw)
-        
-    for y_p in in_y:
-        ax.scatter(layer_x[0], y_p, color='#64748b', s=80, zorder=5, edgecolors='#ffffff', linewidths=1)
-    for y_p in hid_y:
-        ax.scatter(layer_x[1], y_p, color='#38bdf8', s=60, zorder=5, edgecolors='#ffffff', linewidths=1)
-    for y_p in out_y:
-        ax.scatter(layer_x[2], y_p, color='#c084fc', s=90, zorder=5, edgecolors='#ffffff', linewidths=1)
-        
-    ax.text(layer_x[0], 0.02, T["input_layer"], color='#64748b', fontsize=8, ha='center')
-    ax.text(layer_x[1], 0.02, T["hidden_layer"].format(count=hidden_count), color='#64748b', fontsize=8, ha='center')
-    ax.text(layer_x[2], 0.02, T["output_layer"], color='#64748b', fontsize=8, ha='center')
-    
-    ax.axis('off')
-    plt.tight_layout()
-    return fig
-
-def render_engineering_results(epoch_0_loss, epoch_0_pred, current_epoch, current_loss, current_pred, target_val=0.01, is_complete=False):
-    status_text = T["target_acquired"].format(val=target_val) if is_complete else T["convergence_mode"]
-    status_color = "#10b981" if is_complete else "#f59e0b"
-    epoch_lbl = T["convergence"] if is_complete else T["training"]
-    caption_txt = T["blueprint_caption"].format(epoch=current_epoch)
-    
-    html = f"""<div style="background-color: #0b1120; border: 1px solid #1e293b; border-radius: 8px; padding: 14px; font-family: monospace, sans-serif; color: #f8fafc;">
-<div style="text-align: center; font-size: 18px; font-weight: 700; color: #cbd5e1; letter-spacing: 0.8px; margin-bottom: 12px;">
-    {T["eng_results_title"]}
-</div>
-<div style="font-size: 10px; color: #64748b; font-weight: 600; text-transform: uppercase; margin-bottom: 4px;">{T["epoch_0_hdr"]}</div>
-<div style="display: grid; grid-template-columns: 1fr 1fr 1.2fr; gap: 6px; margin-bottom: 12px;">
-    <div style="border: 1px solid #334155; padding: 6px 10px; background: #0f172a; border-radius: 4px;">
-        <div style="font-size: 9px; color: #64748b;">{T["loss"].upper()}</div>
-        <div style="font-size: 13px; font-weight: 700; color: #f87171;">{epoch_0_loss:.6f}</div>
-    </div>
-    <div style="border: 1px solid #334155; padding: 6px 10px; background: #0f172a; border-radius: 4px;">
-        <div style="font-size: 9px; color: #64748b;">{T["prediction"]}</div>
-        <div style="font-size: 13px; font-weight: 700; color: #38bdf8;">{epoch_0_pred:.6f}</div>
-    </div>
-    <div style="border: 1px solid #334155; padding: 6px 10px; background: #0f172a; border-radius: 4px; display: flex; align-items: center; justify-content: space-between;">
-        <div>
-            <div style="font-size: 8px; color: #64748b;">{T["status"]}</div>
-            <div style="font-size: 10px; font-weight: 600; color: #f87171;">{T["random_init"]}</div>
-        </div>
-        <div style="width: 8px; height: 8px; border-radius: 50%; background-color: #f87171; box-shadow: 0 0 6px #f87171;"></div>
-    </div>
-</div>
-<div style="font-size: 10px; color: #64748b; font-weight: 600; text-transform: uppercase; margin-bottom: 4px;">{T["epoch"]} {current_epoch:,} ({epoch_lbl})</div>
-<div style="display: grid; grid-template-columns: 1fr 1fr 1.2fr; gap: 6px; margin-bottom: 12px;">
-    <div style="border: 1px solid #334155; padding: 6px 10px; background: #0f172a; border-radius: 4px;">
-        <div style="font-size: 9px; color: #64748b;">{T["loss"].upper()}</div>
-        <div style="font-size: 13px; font-weight: 700; color: {status_color};">{current_loss:.6f}</div>
-    </div>
-    <div style="border: 1px solid #334155; padding: 6px 10px; background: #0f172a; border-radius: 4px;">
-        <div style="font-size: 9px; color: #64748b;">{T["prediction"]}</div>
-        <div style="font-size: 13px; font-weight: 700; color: #38bdf8;">{current_pred:.6f}</div>
-    </div>
-    <div style="border: 1px solid #334155; padding: 6px 10px; background: #0f172a; border-radius: 4px; display: flex; align-items: center; justify-content: space-between;">
-        <div>
-            <div style="font-size: 8px; color: #64748b;">{T["status"]}</div>
-            <div style="font-size: 10px; font-weight: 600; color: {status_color};">{status_text}</div>
-        </div>
-        <div style="width: 8px; height: 8px; border-radius: 50%; background-color: {status_color}; box-shadow: 0 0 6px {status_color};"></div>
-    </div>
-</div>
-<div style="border: 1px solid #334155; padding: 10px; background: rgba(15, 23, 42, 0.6); border-radius: 4px; font-size: 10px; color: #94a3b8; line-height: 1.4; font-family: sans-serif;">
-    {caption_txt}
-</div>
-</div>"""
-    return html
-
-def update_results_card(placeholder, html_content):
-    placeholder.markdown(textwrap.dedent(html_content), unsafe_allow_html=True)
-
-def render_export_panel(model):
-    w1_list = model.W1.tolist()
-    b1_list = model.b1.tolist()
-    w2_list = model.W2.tolist()
-    b2_list = model.b2.tolist()
-    
-    python_script = f"""import numpy as np
-
-# Exported Neural Network Weights
-W1 = np.array({w1_list})
-b1 = np.array({b1_list})
-W2 = np.array({w2_list})
-b2 = np.array({b2_list})
-
-def predict(x1, x2):
-    X = np.array([[x1, x2]])
-    z1 = np.dot(X, W1) + b1
-    a1 = np.maximum(0.01 * z1, z1) # LeakyReLU
-    z2 = np.dot(a1, W2) + b2
-    prob = 1 / (1 + np.exp(-np.clip(z2, -500, 500)))
-    return prob[0, 0]
-
-# Test prediction
-prob = predict(0.5, 0.2)
-print("Prediction Probability:", prob)
-"""
-    return python_script
-
-# Benchmark test point for prediction tracking
-test_sample_idx = 0
-test_X = X[test_sample_idx:test_sample_idx+1]
-test_target = y[test_sample_idx, 0]
-
-if train_button:
-    nn = NeuralNetwork(input_size=2, hidden_size=hidden_neurons, output_size=1, learning_rate=learning_rate)
-    
-    epoch_0_loss = nn.train_step(X, y)
-    epoch_0_pred = nn.forward(test_X)[0, 0]
-    
-    epochs_hist = [0]
-    loss_hist = [epoch_0_loss]
-    acc_hist = [0.0]
-    
-    fig_main = draw_plot(nn, X, y, 0, epoch_0_loss, ds_info)
-    plot_placeholder.pyplot(fig_main)
-    plt.close(fig_main)
-    
-    fig_loss = draw_loss_curve(epochs_hist, loss_hist, acc_hist)
-    loss_chart_placeholder.pyplot(fig_loss)
-    plt.close(fig_loss)
-    
-    update_results_card(results_card_placeholder, render_engineering_results(epoch_0_loss, epoch_0_pred, 0, epoch_0_loss, epoch_0_pred, target_val=test_target, is_complete=False))
-    
-    fig_weights = draw_network_diagram(nn)
-    weights_chart_placeholder.pyplot(fig_weights)
-    plt.close(fig_weights)
-    
-    update_freq = 200 if train_until_perfect else max(1, epochs // 20)
-    epoch = 0
-    max_safe_epochs = 100000
-    
-    while True:
-        epoch += 1
-        loss = nn.train_step(X, y)
-        
-        output = nn.forward(X)
-        predictions = (output > 0.5).astype(int)
-        accuracy = np.mean(predictions == y)
-        
-        current_pred = output[test_sample_idx, 0]
-        
-        margin = 0.15 
-        strict_correct = ((y == 1) & (output > 0.5 + margin)) | ((y == 0) & (output < 0.5 - margin))
-        strict_accuracy = np.mean(strict_correct)
-        
-        is_final_epoch = False
-        if train_until_perfect:
-            if strict_accuracy == 1.0 or epoch >= max_safe_epochs:
-                is_final_epoch = True
-        else:
-            if epoch >= epochs:
-                is_final_epoch = True
-                
-        epochs_hist.append(epoch)
-        loss_hist.append(loss)
-        acc_hist.append(accuracy)
-        
-        if epoch % update_freq == 0 or is_final_epoch:
-            fig_main = draw_plot(nn, X, y, epoch, loss, ds_info)
-            plot_placeholder.pyplot(fig_main)
-            plt.close(fig_main)
-            
-            fig_loss = draw_loss_curve(epochs_hist, loss_hist, acc_hist)
-            loss_chart_placeholder.pyplot(fig_loss)
-            plt.close(fig_loss)
-            
-            update_results_card(results_card_placeholder, render_engineering_results(epoch_0_loss, epoch_0_pred, epoch, loss, current_pred, target_val=test_target, is_complete=is_final_epoch))
-            
-            fig_weights = draw_network_diagram(nn)
-            weights_chart_placeholder.pyplot(fig_weights)
-            plt.close(fig_weights)
-            
-            if not train_until_perfect:
-                progress_bar.progress(epoch / epochs)
-            
-            epoch_metric.metric(T["epoch"], f"{epoch}" if train_until_perfect else f"{epoch} / {epochs}")
-            
-            if is_final_epoch and accuracy == 1.0 and train_until_perfect:
-                acc_metric.metric(T["accuracy"], "100.0%", delta=T["complete_delta"], delta_color="normal")
-            else:
-                acc_metric.metric(T["accuracy"], f"{accuracy*100:.1f}%", delta=f"{T['loss']} {loss:.4f}", delta_color="inverse")
-            
-        if is_final_epoch:
-            break
-            
-    st.session_state['nn_model'] = nn
-    st.session_state['epoch_0_loss'] = epoch_0_loss
-    st.session_state['epoch_0_pred'] = epoch_0_pred
-    st.session_state['last_epoch'] = epoch
-    st.session_state['last_loss'] = loss
-    st.session_state['last_pred'] = current_pred
-
-else:
     if 'nn_model' not in st.session_state:
-        st.session_state['nn_model'] = NeuralNetwork(input_size=2, hidden_size=hidden_neurons, output_size=1, learning_rate=learning_rate)
-        st.session_state['epoch_0_loss'] = 0.258015
-        st.session_state['epoch_0_pred'] = float(st.session_state['nn_model'].forward(test_X)[0, 0])
-        st.session_state['last_epoch'] = 0
-        st.session_state['last_loss'] = 0.258015
-        st.session_state['last_pred'] = st.session_state['epoch_0_pred']
-        
-    nn = st.session_state['nn_model']
-    
-    fig_main = draw_plot(nn, X, y, st.session_state['last_epoch'], st.session_state['last_loss'], ds_info)
-    plot_placeholder.pyplot(fig_main)
-    
-    fig_loss = draw_loss_curve([0], [st.session_state['epoch_0_loss']], [0.0])
-    loss_chart_placeholder.pyplot(fig_loss)
-    
-    update_results_card(results_card_placeholder, render_engineering_results(
-        st.session_state['epoch_0_loss'],
-        st.session_state['epoch_0_pred'],
-        st.session_state['last_epoch'],
-        st.session_state['last_loss'],
-        st.session_state['last_pred'],
-        target_val=test_target,
-        is_complete=(st.session_state['last_epoch'] > 0)
-    ))
-    
-    fig_weights = draw_network_diagram(nn)
-    weights_chart_placeholder.pyplot(fig_weights)
-    
-    epoch_metric.metric(T["epoch"], f"{st.session_state['last_epoch']}")
-    acc_metric.metric(T["accuracy"], "0.0%" if st.session_state['last_epoch'] == 0 else "Ready")
+        init_nn = MultiTaskNeuralNetwork(input_dim=10, hidden_sizes=[64, 32], learning_rate=0.01, l2_reg=0.0005)
+        init_nn.train_step(X_train, y_cardiac_train, y_diabetes_train, y_life_train, y_vascular_train)
+        init_nn.save_weights(WEIGHTS_FILE)
+        st.session_state['nn_model'] = init_nn
+        st.session_state['last_hidden'] = [64, 32]
 
-with chart_tab4:
-    st.markdown(T["export_title"])
-    st.caption(T["export_desc"])
-    current_nn_exp = st.session_state.get('nn_model', NeuralNetwork(input_size=2, hidden_size=hidden_neurons, output_size=1))
-    code_str = render_export_panel(current_nn_exp)
-    st.code(code_str, language="python")
+nn = st.session_state['nn_model']
 
-st.markdown("---")
-with st.container(border=True):
-    st.markdown(T["inspector_title"])
-    st.caption(T["inspector_caption"])
+# Incremental Training Handler
+if 'run_training_btn' in locals() and run_training_btn:
+    nn.learning_rate = learning_rate
+    nn.l2_reg = l2_reg
     
-    insp_col1, insp_col2, insp_col3 = st.columns([1, 1, 1.5])
-    with insp_col1:
-        custom_x1_real = st.slider(
-            ds_info["x1_name"],
-            min_value=float(ds_info["x1_min"]),
-            max_value=float(ds_info["x1_max"]),
-            value=float(ds_info["x1_default"]),
-            step=float(ds_info["x1_step"])
-        )
-    with insp_col2:
-        custom_x2_real = st.slider(
-            ds_info["x2_name"],
-            min_value=float(ds_info["x2_min"]),
-            max_value=float(ds_info["x2_max"]),
-            value=float(ds_info["x2_default"]),
-            step=float(ds_info["x2_step"])
-        )
+    with st.sidebar:
+        st.markdown(f"<div style='font-size:11px; font-weight:700; color:#64748b; margin-top: 10px;'>{T['performance']}</div>", unsafe_allow_html=True)
+        progress_bar = st.progress(0)
+        loss_metric = st.empty()
+        loss_chart_placeholder = st.empty()
         
-    x1_norm, x2_norm = real_to_norm(custom_x1_real, custom_x2_real, ds_info)
-    current_nn = st.session_state.get('nn_model', NeuralNetwork(input_size=2, hidden_size=hidden_neurons, output_size=1))
-    raw_prediction = float(current_nn.forward(np.array([[x1_norm, x2_norm]]))[0, 0])
-    pred_class = 1 if raw_prediction > 0.5 else 0
-    pred_color = "#60a5fa" if pred_class == 1 else "#f87171"
-    class_label = ds_info["class_1"] if pred_class == 1 else ds_info["class_0"]
+    losses = []
     
-    with insp_col3:
-        st.markdown(textwrap.dedent(f"""
-        <div style="background: #0b1120; border: 1px solid #1e293b; border-radius: 6px; padding: 12px; font-family: monospace;">
-            <div style="font-size: 11px; color: #64748b;">{T["raw_pred_hdr"]}</div>
-            <div style="font-size: 22px; font-weight: 700; color: #38bdf8;">{raw_prediction*100:.1f}% ({raw_prediction:.4f})</div>
-            <div style="font-size: 12px; color: {pred_color}; font-weight: 600; margin-top: 4px;">
-                {T["decided_class"]}: {class_label}
+    for ep in range(epochs):
+        loss = nn.train_step(X_train, y_cardiac_train, y_diabetes_train, y_life_train, y_vascular_train)
+        if ep % max(1, (epochs // 20)) == 0 or ep == epochs - 1:
+            losses.append(loss)
+            progress_bar.progress((ep + 1) / epochs)
+            loss_metric.markdown(f"**Loss:** `{loss:.4f}`")
+            loss_chart_placeholder.line_chart(losses, height=120)
+            
+    nn.save_weights(WEIGHTS_FILE)
+    st.session_state['training_losses'] = losses
+    
+    out = nn.forward(X_train)
+    acc_c = np.mean((out["cardiac"].ravel() > 0.5) == y_cardiac_train.ravel())
+    acc_d = np.mean((out["diabetes"].ravel() > 0.5) == y_diabetes_train.ravel())
+    mae_l = np.mean(np.abs(out["life"].ravel() - y_life_train.ravel()))
+    mae_v = np.mean(np.abs(out["vascular"].ravel() - y_vascular_train.ravel()))
+    
+    st.session_state['eval_metrics'] = {
+        "acc_cardiac": acc_c,
+        "acc_diabetes": acc_d,
+        "mae_life": mae_l,
+        "mae_vascular": mae_v
+    }
+    st.sidebar.success("Обучение завершено! Веса сохранены.")
+
+# ────────────────── LAYOUT SETUP (2.1 : 1 RATIO) ──────────────────
+main_col, controls_col = st.columns([2.1, 1])
+
+# ────────────────── RIGHT PANEL: UNRESTRICTED BIOMARKER CONTROLS ──────────────────
+with controls_col:
+    with st.container(border=True):
+        st.markdown(f"<div style='font-size:12px; font-weight:700; color:#3c4a42; text-transform:uppercase;'>Биомаркеры Пациента</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='font-size:11px; color:#64748b; margin-top:2px; margin-bottom:10px;'>Полный физиологический диапазон (Возраст 1..120 лет)</div>", unsafe_allow_html=True)
+        
+        u_age = st.slider(T["slider_age"], 1, 120, 45)
+        u_sex = st.pills(T["slider_sex"], [T["sex_male"], T["sex_female"]], default=T["sex_male"])
+        val_sex = 1.0 if u_sex == T["sex_male"] else 0.0
+        u_bp = st.slider(T["slider_bp"], 50, 250, 120)
+        u_chol = st.slider(T["slider_chol"], 50, 500, 190)
+        u_glucose = st.slider(T["slider_glucose"], 40, 400, 95)
+        
+        u_max_hr = st.slider(T["slider_max_hr"], 40, 220, 140)
+        u_st_dep = st.slider(T["slider_st_dep"], 0.0, 6.0, 0.5, step=0.1)
+        u_bmi = st.slider(T["slider_bmi"], 10.0, 60.0, 23.5, step=0.5)
+        u_activity = st.slider(T["slider_activity"], 0.0, 1.0, 0.5, step=0.1)
+        u_smoking = st.pills(T["slider_smoking"], [T["smoke_no"], T["smoke_yes"]], default=T["smoke_no"])
+        val_smoking = 1.0 if u_smoking == T["smoke_yes"] else 0.0
+        val_smoking = 1.0 if u_smoking == T["smoke_yes"] else 0.0
+
+        raw_vec = np.array([u_age, val_sex, u_bp, u_chol, u_glucose, u_max_hr, u_st_dep, u_bmi, u_activity, val_smoking])
+        norm_vec = normalize(raw_vec, mins, maxs)
+
+        # 🎲 MONTE CARLO DROPOUT UNCERTAINTY SAMPLING (30 stochastic passes)
+        mc_res = nn.predict_with_uncertainty(norm_vec.reshape(1, -1), n_samples=30, dropout_rate=0.1)
+
+        p_cardiac = float(mc_res["cardiac"]["mean"][0, 0])
+        ci_cardiac = float(mc_res["cardiac"]["ci95"][0, 0]) * 100.0
+
+        p_diabetes = float(mc_res["diabetes"]["mean"][0, 0])
+        ci_diabetes = float(mc_res["diabetes"]["ci95"][0, 0]) * 100.0
+
+        p_life = float(mc_res["life"]["mean"][0, 0])
+        ci_life = float(mc_res["life"]["ci95"][0, 0])
+
+        p_vascular = float(mc_res["vascular"]["mean"][0, 0])
+        ci_vascular = float(mc_res["vascular"]["ci95"][0, 0])
+
+# ────────────────── CLINICAL RECOMMENDATIONS & SYMPTOM ENGINE ──────────────────
+def generate_clinical_analysis(raw_vec, p_cardiac, p_diabetes, p_life, p_vascular, lang="ru"):
+    age, sex, bp, chol, glucose, max_hr, st_dep, bmi, activity, smoking = raw_vec
+    
+    triggers = []
+    symptoms = []
+    advices = []
+    
+    # 1. Cardiovascular & BP
+    if bp > 140 or st_dep > 1.0:
+        triggers.append("Артериальная гипертензия / Ишемическая депрессия ST" if lang=="ru" else "Hypertension / ST Depression")
+        symptoms.append("Головные боли в затылочной области, одышка при нагрузке, тяжесть за грудиной" if lang=="ru" else "Occipital headaches, exertional dyspnea, chest tightness")
+        advices.append("• **Кардиоконтроль:** Снизить натрий (<2г/сут), выполнить суточный мониторинг СМАД и ЭКГ." if lang=="ru" else "• **Cardio:** Sodium <2g/day, 24h Holter & ABPM monitoring.")
+    elif bp > 130:
+        triggers.append("Предгипертензия" if lang=="ru" else "Pre-hypertension")
+        advices.append("• **Давление:** Регулярная аэробная нагрузка и снижение психоэмоционального стресса." if lang=="ru" else "• **BP:** Regular aerobic exercise and stress management.")
+
+    # 2. Lipids & Metabolic
+    if chol > 240:
+        triggers.append("Выраженная гиперхолестеринемия" if lang=="ru" else "Severe Hypercholesterolemia")
+        symptoms.append("Риск атеросклеротического поражения сосудов, сосудистый шум" if lang=="ru" else "Atherosclerotic risk, vascular bruits")
+        advices.append("• **Липиды:** Диета DASH/Средиземноморская, УЗИ сонных артерий (УЗДГ СМА)." if lang=="ru" else "• **Lipids:** Mediterranean diet, Carotid Ultrasound.")
+    elif chol > 200:
+        triggers.append("Умеренная гиперхолестеринемия" if lang=="ru" else "Moderate Hypercholesterolemia")
+        advices.append("• **Липиды:** Увеличить клетчатку, полиненасыщенные жиры (Омега-3)." if lang=="ru" else "• **Lipids:** Increase soluble fiber & Omega-3 fatty acids.")
+
+    # 3. Glycemic control
+    if glucose > 126:
+        triggers.append("Гипергликемия натощак" if lang=="ru" else "Fasting Hyperglycemia")
+        symptoms.append("Сухость во рту, быстрая утомляемость, повышенная жажда" if lang=="ru" else "Dry mouth, fatigue, polydipsia")
+        advices.append("• **Метаболизм:** Консультация эндокринолога, замер гликированного гемоглобина (HbA1c)." if lang=="ru" else "• **Metabolism:** Endocrinologist consultation, HbA1c test.")
+
+    # 4. Lifestyle & Weight
+    if bmi > 30.0:
+        triggers.append("Ожидание I-II ст." if lang=="ru" else "Obesity Class I-II")
+        symptoms.append("Нагрузка на суставы, сниженная толерантность к нагрузкам" if lang=="ru" else "Joint strain, exercise intolerance")
+        advices.append("• **Вес:** Дефицит калорий 300-500 ккал/сут, силовой и кардио тренинг." if lang=="ru" else "• **Weight:** Caloric deficit 300-500 kcal/day, strength & cardio.")
+        
+    if smoking == 1.0:
+        triggers.append("Никотиновая интоксикация" if lang=="ru" else "Tobacco Dependency")
+        symptoms.append("Кашель по утрам, спазм периферических сосудов, снижение VO2 max" if lang=="ru" else "Morning cough, peripheral vasoconstriction, low VO2 max")
+        advices.append("• **Курение:** Отказ от табака — увеличивает продолжительность жизни на +4.5-7 лет." if lang=="ru" else "• **Smoking:** Quitting increases life expectancy by +4.5-7 yrs.")
+
+    if activity < 0.3:
+        triggers.append("Выраженная гиподинамия" if lang=="ru" else "Sedentary Lifestyle")
+        advices.append("• **Активность:** Минимум 150 минут умеренной аэробной активности в неделю." if lang=="ru" else "• **Activity:** At least 150 mins of moderate aerobic exercise weekly.")
+
+    if not triggers:
+        triggers.append("Биомаркеры в норме" if lang=="ru" else "Optimal Biomarkers")
+        symptoms.append("Симптомы патологий отсутствуют" if lang=="ru" else "No pathological symptoms noted")
+        advices.append("• Все целевые показатели находятся в физиологической норме. Продолжайте текущий режим!" if lang=="ru" else "• All biomarkers within healthy baseline targets.")
+
+    return triggers, symptoms, advices
+
+triggers_list, symptoms_list, advices_list = generate_clinical_analysis(raw_vec, p_cardiac, p_diabetes, p_life, p_vascular, lang_code)
+
+# ────────────────── MAIN PANEL: TELEMETRY & TABS ──────────────────
+with main_col:
+    # 4 Core KPI Telemetry Cards matching code.html
+    k1, k2, k3, k4 = st.columns(4)
+    
+    with k1:
+        st.markdown(f"""
+        <div class="telemetry-card">
+            <div class="telemetry-indicator" style="background:#10b981;" if "{p_cardiac <= 0.5}" else "background:#ba1a1a;"></div>
+            <div class="telemetry-label">{T["cardiac_risk_hdr"]}</div>
+            <div class="telemetry-value" style="color:{'#ba1a1a' if p_cardiac > 0.5 else '#006c49'};">{p_cardiac * 100:.1f}%</div>
+            <div class="telemetry-badge" style="background:{'#ffdad6' if p_cardiac > 0.5 else '#eef6ee'}; color:{'#ba1a1a' if p_cardiac > 0.5 else '#006c49'};">
+                ±{ci_cardiac:.1f}% ({T["high_risk"] if p_cardiac > 0.5 else T["low_risk"]})
             </div>
         </div>
-        """), unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
+        
+    with k2:
+        st.markdown(f"""
+        <div class="telemetry-card">
+            <div class="telemetry-indicator" style="background:#10b981;" if "{p_diabetes <= 0.5}" else "background:#ba1a1a;"></div>
+            <div class="telemetry-label">{T["diabetes_risk_hdr"]}</div>
+            <div class="telemetry-value" style="color:{'#ba1a1a' if p_diabetes > 0.5 else '#006c49'};">{p_diabetes * 100:.1f}%</div>
+            <div class="telemetry-badge" style="background:{'#ffdad6' if p_diabetes > 0.5 else '#eef6ee'}; color:{'#ba1a1a' if p_diabetes > 0.5 else '#006c49'};">
+                ±{ci_diabetes:.1f}% ({T["high_risk"] if p_diabetes > 0.5 else T["low_risk"]})
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+    with k3:
+        baseline_life = 82.0 if val_sex == 0.0 else 79.0
+        delta_life = p_life - baseline_life
+        st.markdown(f"""
+        <div class="telemetry-card">
+            <div class="telemetry-indicator" style="background:#0051d5;"></div>
+            <div class="telemetry-label">{T["life_exp_hdr"]}</div>
+            <div class="telemetry-value" style="color:#0051d5;">{p_life:.1f} <span style="font-size:13px;">{T['years']}</span></div>
+            <div class="telemetry-badge" style="background:#dbe1ff; color:#003ea8;">
+                ±{ci_life:.1f} ({delta_life:+.1f} {T['vs_baseline']})
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+    with k4:
+        delta_age = p_vascular - u_age
+        st.markdown(f"""
+        <div class="telemetry-card">
+            <div class="telemetry-indicator" style="background:{'#ba1a1a' if delta_age > 0 else '#10b981'};"></div>
+            <div class="telemetry-label">{T["vascular_age_hdr"]}</div>
+            <div class="telemetry-value" style="color:{'#ba1a1a' if delta_age > 0 else '#006c49'};">{p_vascular:.1f} <span style="font-size:13px;">{T['years']}</span></div>
+            <div class="telemetry-badge" style="background:{'#ffdad6' if delta_age > 0 else '#eef6ee'}; color:{'#ba1a1a' if delta_age > 0 else '#006c49'};">
+                ±{ci_vascular:.1f} ({delta_age:+.1f} {T['vs_chrono']})
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("<div style='margin-bottom:16px;'></div>", unsafe_allow_html=True)
+
+    # Multi-Feature Analytics Tabs
+    main_tabs = st.tabs(T["tabs"])
+    
+    # ── TAB 1: ARCHITECTURE & TRAINING METRICS ──
+    with main_tabs[0]:
+        st.markdown(f"<div style='font-size:15px; font-weight:700; color:#006c49; margin-bottom: 12px;'>{T['arch_title']}</div>", unsafe_allow_html=True)
+        
+        badges = [f"<span style='background-color:#006c49; color:#ffffff; padding:6px 14px; border-radius:20px; font-weight:700; font-size:12px;'>Вход (10)</span>"]
+        for idx, h_size in enumerate(nn.hidden_sizes):
+            badges.append(f"<span style='background-color:#006c49; color:#ffffff; padding:6px 14px; border-radius:20px; font-weight:700; font-size:12px;'>Слой {idx+1} ({h_size})</span>")
+        badges.append(f"<span style='background-color:#006c49; color:#ffffff; padding:6px 14px; border-radius:20px; font-weight:700; font-size:12px;'>Выходы (4)</span>")
+        
+        arch_html = " <span style='color:#006c49; font-weight:900;'>➔</span> ".join(badges)
+        st.markdown(f"<div style='margin-bottom:12px; display:flex; align-items:center; flex-wrap:wrap; gap:6px;'>{arch_html}</div>", unsafe_allow_html=True)
+        
+        st.markdown("---")
+        
+        c1, c2 = st.columns(2)
+        with c1:
+            st.markdown(f"<div style='font-size:14px; font-weight:700; color:#3c4a42; margin-bottom: 10px;'>{T['loss_title']}</div>", unsafe_allow_html=True)
+            losses_to_show = st.session_state.get('training_losses', [1.538, 1.474, 1.428, 1.426, 1.432])
+            fig_loss = go.Figure()
+            fig_loss.add_trace(go.Scatter(y=losses_to_show, mode='lines+markers', name='Loss', line=dict(color='#006c49', width=2)))
+            fig_loss.update_layout(height=220, margin=dict(l=0, r=0, t=10, b=0), plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
+            fig_loss.update_xaxes(title_text='Шаги обучения', gridcolor='#dde4dd')
+            fig_loss.update_yaxes(title_text='Loss', gridcolor='#dde4dd')
+            st.plotly_chart(fig_loss, use_container_width=True, config={'displayModeBar': False})
+                
+        with c2:
+            st.markdown(f"<div style='font-size:14px; font-weight:700; color:#3c4a42; margin-bottom: 10px;'>{T['eval_title']}</div>", unsafe_allow_html=True)
+            em = st.session_state.get('eval_metrics', {"acc_cardiac": 0.9954, "acc_diabetes": 0.9962, "mae_life": 4.97, "mae_vascular": 13.03})
+            
+            def render_metric_card(label, val):
+                return f"""
+                <div style="background:#ffffff; border:1px solid #eef6ee; border-radius:12px; padding:10px 14px; margin-bottom:8px; box-shadow:0 2px 8px rgba(0,108,73,0.03);">
+                    <div style="font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase;">{label}</div>
+                    <div style="font-size:16px; font-weight:700; color:#006c49; margin-top:2px; font-family:'JetBrains Mono',monospace;">{val}</div>
+                </div>
+                """
+            
+            m1, m2 = st.columns(2)
+            with m1:
+                st.markdown(render_metric_card(T["cardiac_risk_hdr"], f"{T['accuracy']}: {em['acc_cardiac']*100:.1f}%"), unsafe_allow_html=True)
+                st.markdown(render_metric_card(T["life_exp_hdr"], f"{T['mae']}: {em['mae_life']:.2f} {T['years']}"), unsafe_allow_html=True)
+            with m2:
+                st.markdown(render_metric_card(render_metric_card_title := T["diabetes_risk_hdr"], f"{T['accuracy']}: {em['acc_diabetes']*100:.1f}%"), unsafe_allow_html=True)
+                st.markdown(render_metric_card(T["vascular_age_hdr"], f"{T['mae']}: {em['mae_vascular']:.2f} {T['years']}"), unsafe_allow_html=True)
+                
+    # ── TAB 2: 3D PCA SPACE ──
+    with main_tabs[1]:
+        X_all = np.vstack([norm_X, norm_vec.reshape(1, -1)])
+        feats = nn.get_stage_features(X_all)
+        latent = feats["stage2_latent"]
+        
+        pca = PCA(n_components=3, random_state=42)
+        latent_3d = pca.fit_transform(latent)
+        
+        patient_3d = latent_3d[-1:]
+        dataset_3d = latent_3d[:-1]
+        
+        y_flat = y_cardiac.ravel()
+        
+        fig_3d = go.Figure()
+        fig_3d.add_trace(go.Scatter3d(
+            x=dataset_3d[y_flat == 0, 0], y=dataset_3d[y_flat == 0, 1], z=dataset_3d[y_flat == 0, 2],
+            mode='markers', name=T["low_risk_label"],
+            marker=dict(size=4, color='#10b981', opacity=0.6)
+        ))
+        fig_3d.add_trace(go.Scatter3d(
+            x=dataset_3d[y_flat == 1, 0], y=dataset_3d[y_flat == 1, 1], z=dataset_3d[y_flat == 1, 2],
+            mode='markers', name=T["high_risk_label"],
+            marker=dict(size=4, color='#ef4444', opacity=0.6)
+        ))
+        fig_3d.add_trace(go.Scatter3d(
+            x=patient_3d[:, 0], y=patient_3d[:, 1], z=patient_3d[:, 2],
+            mode='markers', name="Пациент 🎯",
+            marker=dict(size=12, color='#0051d5', symbol='diamond', opacity=1.0)
+        ))
+        fig_3d.update_layout(
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            font=dict(family='Inter', color='#3c4a42', size=11),
+            margin=dict(l=0, r=0, t=10, b=0),
+            height=360,
+            scene=dict(
+                xaxis=dict(backgroundcolor="#eef6ee", gridcolor="#dde4dd", title="PCA 1"),
+                yaxis=dict(backgroundcolor="#eef6ee", gridcolor="#dde4dd", title="PCA 2"),
+                zaxis=dict(backgroundcolor="#eef6ee", gridcolor="#dde4dd", title="PCA 3"),
+            ),
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0)
+        )
+        st.plotly_chart(fig_3d, use_container_width=True, config={'displayModeBar': 'hover', 'displaylogo': False})
+
+    # ── TAB 3: 20-YEAR FORECAST ──
+    with main_tabs[2]:
+        years_future = np.array([0, 5, 10, 15, 20])
+        base_cardiac_risk_traj = []
+        base_vascular_traj = []
+        opt_cardiac_risk_traj = []
+        
+        for y in years_future:
+            sim_base_raw = raw_vec.copy()
+            sim_base_raw[0] = min(sim_base_raw[0] + y, maxs[0])
+            sim_base_norm = normalize(sim_base_raw, mins, maxs)
+            sim_base_preds = nn.forward(sim_base_norm.reshape(1, -1))
+            base_cardiac_risk_traj.append(float(sim_base_preds["cardiac"][0, 0]) * 100.0)
+            base_vascular_traj.append(float(sim_base_preds["vascular"][0, 0]))
+            
+            sim_opt_raw = raw_vec.copy()
+            sim_opt_raw[0] = min(sim_opt_raw[0] + y, maxs[0])
+            sim_opt_raw[9] = 0.0
+            sim_opt_raw[8] = 1.0
+            sim_opt_raw[2] = min(120.0, sim_opt_raw[2])
+            sim_opt_raw[3] = min(180.0, sim_opt_raw[3])
+            sim_opt_norm = normalize(sim_opt_raw, mins, maxs)
+            sim_opt_preds = nn.forward(sim_opt_norm.reshape(1, -1))
+            opt_cardiac_risk_traj.append(float(sim_opt_preds["cardiac"][0, 0]) * 100.0)
+
+        fig_traj = go.Figure()
+        fig_traj.add_trace(go.Scatter(x=years_future, y=base_cardiac_risk_traj, mode='lines+markers', name="Текущий трек (Кардио-риск %)", line=dict(color='#ba1a1a', width=2)))
+        fig_traj.add_trace(go.Scatter(x=years_future, y=opt_cardiac_risk_traj, mode='lines+markers', name="Оптимизированный трек (Риск %)", line=dict(color='#10b981', width=2, dash='dash')))
+        fig_traj.add_trace(go.Scatter(x=years_future, y=base_vascular_traj, mode='lines+markers', name="Сосудистый возраст (лет)", line=dict(color='#0051d5', width=2)))
+        
+        fig_traj.update_layout(
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='#f4fbf4',
+            font=dict(family='Inter', color='#3c4a42', size=11),
+            margin=dict(l=20, r=20, t=30, b=20),
+            height=360,
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0)
+        )
+        fig_traj.update_xaxes(title="Годы (вперед)", showgrid=True, gridcolor='#dde4dd')
+        st.plotly_chart(fig_traj, use_container_width=True)
+
+    # ── TAB 4: RADAR CHART ──
+    with main_tabs[3]:
+        categories = ['Давление', 'Холестерин', 'Глюкоза', 'ИМТ', 'Депрессия ST', 'Курение']
+        patient_vals = [u_bp/180.0, u_chol/350.0, u_glucose/220.0, u_bmi/40.0, u_st_dep/4.5, val_smoking]
+        healthy_ref = [120/180.0, 190/350.0, 90/220.0, 22.5/40.0, 0.2/4.5, 0.0]
+
+        fig_radar = go.Figure()
+        fig_radar.add_trace(go.Scatterpolar(r=patient_vals, theta=categories, fill='toself', name='Пациент', line_color='#0051d5'))
+        fig_radar.add_trace(go.Scatterpolar(r=healthy_ref, theta=categories, fill='toself', name='Здоровый эталон', line_color='#10b981', opacity=0.5))
+
+        fig_radar.update_layout(
+            paper_bgcolor='rgba(0,0,0,0)',
+            polar=dict(bgcolor='#f4fbf4', radialaxis=dict(visible=True, range=[0, 1])),
+            font=dict(family='Inter', color='#3c4a42', size=11),
+            margin=dict(l=30, r=30, t=20, b=20),
+            height=360,
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0)
+        )
+        st.plotly_chart(fig_radar, use_container_width=True)
+
+    # ── TAB 5: EXPLAINABLE AI (XAI) ──
+    with main_tabs[4]:
+        attributions = nn.get_feature_attributions(norm_vec.reshape(1, -1))
+        feature_names = [f[f"name_{lang_code}"] for f in data_dict["feature_meta"]]
+
+        fig_xai = px.bar(
+            x=attributions, y=feature_names, orientation='h',
+            labels={'x': T["xai_xlabel"], 'y': 'Биомаркер'},
+            color=attributions, color_continuous_scale='emrld'
+        )
+        fig_xai.update_layout(
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='#f4fbf4',
+            font=dict(family='Inter', color='#3c4a42', size=11),
+            margin=dict(l=20, r=20, t=20, b=20),
+            height=360,
+            coloraxis_showscale=False
+        )
+        fig_xai.update_yaxes(autorange="reversed")
+        st.plotly_chart(fig_xai, use_container_width=True)
+
+    # ────────────────── BOTTOM SECTION: ACTION PLAN & ROOT CAUSES ──────────────────
+    b_col1, b_col2 = st.columns(2)
+    
+    with b_col1:
+        with st.container(border=True):
+            st.markdown(f"<div style='font-size:12px; font-weight:700; color:#006c49; text-transform:uppercase;'>📋 {T['recommendations_hdr']}</div>", unsafe_allow_html=True)
+            st.markdown("<div style='margin-top:8px;'></div>", unsafe_allow_html=True)
+            for adv in advices_list:
+                st.markdown(f"<div style='font-size:12px; color:#161d19; line-height:1.6; margin-bottom:6px;'>{adv}</div>", unsafe_allow_html=True)
+                
+    with b_col2:
+        with st.container(border=True):
+            st.markdown(f"<div style='font-size:12px; font-weight:700; color:#ba1a1a; text-transform:uppercase;'>🩺 {T['symptoms_hdr']}</div>", unsafe_allow_html=True)
+            st.markdown("<div style='margin-top:8px;'></div>", unsafe_allow_html=True)
+            
+            st.markdown("<div style='font-size:11px; font-weight:700; color:#64748b;'>КЛЮЧЕВЫЕ ТРИГГЕРЫ РИСКА:</div>", unsafe_allow_html=True)
+            for trg in triggers_list:
+                st.markdown(f"<span style='background:#ffdad6; color:#ba1a1a; padding:2px 8px; border-radius:100px; font-size:11px; font-weight:700; margin-right:4px;'>{trg}</span>", unsafe_allow_html=True)
+                
+            st.markdown("<div style='margin-top:10px; font-size:11px; font-weight:700; color:#64748b;'>ВОЗМОЖНЫЕ КЛИНИЧЕСКИЕ ПРОЯВЛЕНИЯ:</div>", unsafe_allow_html=True)
+            if symptoms_list:
+                for sym in symptoms_list:
+                    st.markdown(f"<div style='font-size:12px; color:#475569; line-height:1.5;'>• {sym}</div>", unsafe_allow_html=True)
+            else:
+                st.markdown("<div style='font-size:12px; color:#006c49;'>• Патологических симптомов не выявлено.</div>", unsafe_allow_html=True)
+
+# ────────────────── RIGHT PANEL: EXPORT & SIMULATOR ──────────────────
+with controls_col:
+    with st.container(border=True):
+        st.markdown(f"<div style='font-size:12px; font-weight:700; color:#3c4a42; text-transform:uppercase;'>🧪 {T['what_if_hdr']}</div>", unsafe_allow_html=True)
+        
+        sim_quit_smoke = st.checkbox(T["sim_quit_smoke"], value=(val_smoking == 1.0))
+        sim_lower_bp = st.checkbox(T["sim_lower_bp"], value=False)
+        sim_max_act = st.checkbox(T["sim_max_act"], value=False)
+
+        sim_raw = raw_vec.copy()
+        if sim_quit_smoke: sim_raw[9] = 0.0
+        if sim_lower_bp: sim_raw[2] = 120.0
+        if sim_max_act: sim_raw[8] = 1.0
+
+        sim_norm = normalize(sim_raw, mins, maxs)
+        sim_preds = nn.forward(sim_norm.reshape(1, -1))
+
+        sim_cardiac = float(sim_preds["cardiac"][0, 0])
+        sim_life = float(sim_preds["life"][0, 0])
+
+        risk_diff = (sim_cardiac - p_cardiac) * 100.0
+        life_diff = sim_life - p_life
+        
+        st.markdown(f"""
+        <div style="background-color: #f4fbf4; border: 1px solid #dde4dd; border-radius: 10px; padding: 12px; font-family: 'JetBrains Mono', monospace; margin-top:8px;">
+            <div style="font-size: 12px; font-weight: 700; color: #10b981;">
+                Кардио-риск: {p_cardiac*100:.1f}% ➔ {sim_cardiac*100:.1f}% ({risk_diff:+.1f}%)
+            </div>
+            <div style="font-size: 12px; font-weight: 700; color: #0051d5; margin-top: 4px;">
+                Жизнь: {p_life:.1f} ➔ {sim_life:.1f} ({life_diff:+.1f} лет)
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with st.container(border=True):
+        st.markdown(f"<div style='font-size:12px; font-weight:700; color:#64748b; text-transform:uppercase;'>📑 Экспорт Клинических Отчётов</div>", unsafe_allow_html=True)
+        
+        sex_display = T["sex_male"] if val_sex == 1.0 else T["sex_female"]
+        rep_title = "MedAI Longevity Diagnostic Report" if lang_code == "en" else "Клинический диагностический отчёт MedAI Longevity"
+        
+        # High-End HTML Report with Print Functionality
+        report_html = f"""<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <title>{rep_title}</title>
+    <style>
+        body {{ font-family: 'Inter', system-ui, -apple-system, sans-serif; background: #f8fafc; color: #0f172a; margin: 0; padding: 32px; }}
+        .report-card {{ background: #ffffff; max-width: 850px; margin: 0 auto; border-radius: 16px; border: 1px solid #e2e8f0; padding: 40px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }}
+        .header {{ display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #006c49; padding-bottom: 20px; margin-bottom: 24px; }}
+        .brand {{ font-size: 24px; font-weight: 800; color: #006c49; }}
+        .meta {{ font-size: 12px; color: #64748b; text-align: right; }}
+        .patient-box {{ background: #f4fbf4; border: 1px solid #dde4dd; border-radius: 12px; padding: 16px; margin-bottom: 24px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; font-size: 13px; }}
+        .metrics-grid {{ display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 28px; }}
+        .metric-tile {{ background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; border-left: 5px solid #006c49; }}
+        .metric-title {{ font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; }}
+        .metric-val {{ font-size: 22px; font-weight: 800; color: #006c49; margin-top: 4px; font-family: monospace; }}
+        .section-title {{ font-size: 16px; font-weight: 700; color: #006c49; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; margin-top: 24px; margin-bottom: 12px; }}
+        .adv-list {{ font-size: 13px; line-height: 1.6; color: #334155; }}
+        .btn-print {{ background: #006c49; color: #ffffff; border: none; padding: 10px 24px; border-radius: 100px; font-weight: 700; cursor: pointer; margin-bottom: 20px; font-size: 13px; }}
+        @media print {{ .btn-print {{ display: none; }} body {{ padding: 0; background: white; }} .report-card {{ border: none; box-shadow: none; padding: 0; }} }}
+    </style>
+</head>
+<body>
+    <div style="text-align: center;">
+        <button class="btn-print" onclick="window.print()">🖨️ Распечатать / Сохранить в PDF</button>
+    </div>
+    <div class="report-card">
+        <div class="header">
+            <div>
+                <div class="brand">🧬 MedAI Longevity Suite</div>
+                <div style="font-size: 13px; color: #64748b; margin-top: 2px;">Executive Clinical AI Diagnostics</div>
+            </div>
+            <div class="meta">
+                <div><b>Дата:</b> {st.session_state.get('cur_date', '13.08.2026')}</div>
+                <div><b>Версия ИИ:</b> v3.0 (Monte Carlo 95% CI)</div>
+            </div>
+        </div>
+
+        <div class="patient-box">
+            <div><b>Возраст:</b> {u_age} {T['years']}</div>
+            <div><b>Пол:</b> {sex_display}</div>
+            <div><b>АД:</b> {u_bp} мм рт.ст.</div>
+            <div><b>ИМТ:</b> {u_bmi}</div>
+            <div><b>Холестерин:</b> {u_chol} мг/дл</div>
+            <div><b>Глюкоза:</b> {u_glucose} мг/дл</div>
+            <div><b>ST Депрессия:</b> {u_st_dep} мм</div>
+            <div><b>Курение:</b> {'Да' if val_smoking==1.0 else 'Нет'}</div>
+        </div>
+
+        <div class="section-title">1. Нейросетевая Диагностика Рисков (Monte Carlo Dropout)</div>
+        <div class="metrics-grid">
+            <div class="metric-tile">
+                <div class="metric-title">{T['cardiac_risk_hdr']}</div>
+                <div class="metric-val">{p_cardiac*100:.1f}% ±{ci_cardiac:.1f}%</div>
+            </div>
+            <div class="metric-tile">
+                <div class="metric-title">{T['diabetes_risk_hdr']}</div>
+                <div class="metric-val">{p_diabetes*100:.1f}% ±{ci_diabetes:.1f}%</div>
+            </div>
+            <div class="metric-tile">
+                <div class="metric-title">{T['life_exp_hdr']}</div>
+                <div class="metric-val">{p_life:.1f} ±{ci_life:.1f} {T['years']}</div>
+            </div>
+            <div class="metric-tile">
+                <div class="metric-title">{T['vascular_age_hdr']}</div>
+                <div class="metric-val">{p_vascular:.1f} ±{ci_vascular:.1f} {T['years']}</div>
+            </div>
+        </div>
+
+        <div class="section-title">2. Ключевые Триггеры и Анализ Симптомов</div>
+        <div style="margin-bottom:12px;">
+            <b>Выявленные факторы риска:</b> {', '.join(triggers_list)}
+        </div>
+        <div class="adv-list">
+            <b>Вероятные клинические проявления:</b>
+            <ul>
+                {"".join([f"<li>{s}</li>" for s in symptoms_list]) if symptoms_list else "<li>Патологические симптомы отсутствуют.</li>"}
+            </ul>
+        </div>
+
+        <div class="section-title">3. Персонализированный Клинический План Долголетия</div>
+        <div class="adv-list">
+            <ul>
+                {"".join([f"<li>{a.replace('• ', '')}</li>" for a in advices_list])}
+            </ul>
+        </div>
+
+        <div style="margin-top: 40px; border-t: 1px solid #e2e8f0; pt: 16px; font-size: 11px; color: #94a3b8; text-align: center;">
+            Отчёт сформирован автоматически мультизадачной нейросетью MedAI Longevity Suite. Документ носит рекомендательный характер.
+        </div>
+    </div>
+</body>
+</html>
+"""
+        
+        observations = [
+            ("cardiac-risk-001", "79423-0", "Cardiovascular disease risk", round(p_cardiac * 100, 2), "%", round(ci_cardiac, 2), "%"),
+            ("diabetes-risk-001", "73696-7", "Type-II Diabetes risk", round(p_diabetes * 100, 2), "%", round(ci_diabetes, 2), "%"),
+            ("life-expectancy-001", "39156-5", "Life Expectancy", round(p_life, 1), "years", round(ci_life, 1), "years"),
+            ("vascular-age-001", "39156-5", "Vascular Age", round(p_vascular, 1), "years", round(ci_vascular, 1), "years"),
+        ]
+        
+        entries = [
+            {
+                "resource": {
+                    "resourceType": "DiagnosticReport",
+                    "id": "medai-report-001",
+                    "status": "final",
+                    "code": {
+                        "coding": [{"system": "http://loinc.org", "code": "80352-8", "display": "Cardiovascular and Longevity Risk Assessment"}]
+                    },
+                    "subject": {"display": f"Patient Age {u_age}, Sex {'Male' if val_sex == 1.0 else 'Female'}"},
+                    "result": [{"reference": f"Observation/{obs[0]}"} for obs in observations]
+                }
+            }
+        ]
+        
+        for obs in observations:
+            entries.append({
+                "resource": {
+                    "resourceType": "Observation",
+                    "id": obs[0],
+                    "status": "final",
+                    "code": {"coding": [{"system": "http://loinc.org", "code": obs[1], "display": obs[2]}]},
+                    "valueQuantity": {"value": obs[3], "unit": obs[4], "system": "http://unitsofmeasure.org", "code": obs[4]},
+                    "extension": [{
+                        "url": "http://hl7.org/fhir/StructureDefinition/observation-confidenceInterval",
+                        "valueQuantity": {"value": obs[5], "unit": obs[6]}
+                    }]
+                }
+            })
+            
+        fhir_json = {
+            "resourceType": "Bundle",
+            "type": "collection",
+            "entry": entries
+        }
+        
+        st.download_button(T["report_btn"], data=report_html, file_name=f"MedAI_Clinical_Report_Patient_{u_age}yo.html", mime="text/html", use_container_width=True)
+        st.download_button(T["fhir_btn"], data=json.dumps(fhir_json, indent=2), file_name="MedAI_FHIR_Record.json", mime="application/json", use_container_width=True)

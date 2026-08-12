@@ -5,3 +5,15 @@ __pycache__/
 env/
 venv/
 .streamlit/secrets.toml
+.agents/
+.claude/
+*.egg-info/
+dist/
+build/
+.idea/
+.vscode/
+*.log
+.pytest_cache/
+*.npz
+code.html
+screen.png
