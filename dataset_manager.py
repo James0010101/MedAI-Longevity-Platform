@@ -1,19 +1,19 @@
 import os
 import numpy as np
 
+# Min-max normalization helper with small epsilon to prevent division by zero
 def normalize(X, mins, maxs):
-
     return (X - mins) / (maxs - mins + 1e-8)
 
 def get_medical_dataset(n_samples=500, seed=42, test_ratio=0.2, source="synthetic", csv_file=None):
-
     rng = np.random.default_rng(seed)
 
+    # Reference physiological bounds for feature normalization
     mins = np.array([1.0, 0.0, 50.0, 50.0, 40.0, 40.0, 0.0, 10.0, 0.0, 0.0])
     maxs = np.array([120.0, 1.0, 250.0, 500.0, 400.0, 220.0, 6.0, 60.0, 1.0, 1.0])
 
     if source == "fused_master":
-
+        # Fuse real clinical data (OpenML Heart & Pima Diabetes) with synthetic cohort
         try:
             d_heart = get_medical_dataset(n_samples=500, seed=seed, source="openml_heart")
             d_pima = get_medical_dataset(n_samples=500, seed=seed+1, source="pima_diabetes")

@@ -1,4 +1,5 @@
 
+# Automated test suite for data preprocessing pipeline, neural network forward/backprop, and FHIR report serialization
 import os
 import json
 import tempfile
@@ -8,6 +9,7 @@ import pytest
 from dataset_manager import get_medical_dataset, normalize
 from neural_network import MultiTaskNeuralNetwork, LOSS_WEIGHTS
 
+# Data loading, train/test split, and normalization tests
 class TestDatasetManager:
     def test_dataset_shape(self):
         data = get_medical_dataset(n_samples=100)

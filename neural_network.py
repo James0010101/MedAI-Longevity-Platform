@@ -1,5 +1,6 @@
 import numpy as np
 
+# Loss scaling weights to balance classification BCE and regression MSE magnitudes
 LOSS_WEIGHTS = {
     "cardiac": 1.0,
     "diabetes": 1.0,
@@ -7,13 +8,14 @@ LOSS_WEIGHTS = {
     "vascular": 0.005,
 }
 
+# Hyperparameters for Adam optimizer and gradient clipping
 ADAM_BETA1 = 0.9
 ADAM_BETA2 = 0.999
 ADAM_EPS = 1e-8
-
 GRAD_CLIP = 2.0
 
 def sigmoid(x):
+    # Clip input to prevent floating point overflow in exp
     x = np.clip(x, -500, 500)
     return 1.0 / (1.0 + np.exp(-x))
 
@@ -28,6 +30,11 @@ def swish_deriv(x):
     return s + x * s * (1.0 - s)
 
 class MultiTaskNeuralNetwork:
+    """
+    Multi-task deep neural network implemented in pure NumPy.
+    Shared hidden layers learn joint biomarker representations before splitting
+    into 4 task-specific output heads (2 classification, 2 regression).
+    """
 
     def __init__(self, input_dim=10, hidden_sizes=[20, 12], learning_rate=0.02, l2_reg=1e-4, seed=42):
         self.input_dim = input_dim
@@ -39,6 +46,7 @@ class MultiTaskNeuralNetwork:
 
         rng = np.random.default_rng(seed)
 
+        # Shared feature extraction backbone
         self.W_shared = []
         self.b_shared = []
         self.m_w_shared, self.v_w_shared = [], []
@@ -46,6 +54,7 @@ class MultiTaskNeuralNetwork:
 
         prev_dim = input_dim
         for h_dim in hidden_sizes:
+            # He normal initialization tuned for Swish activation
             scale = np.sqrt(2.0 / prev_dim)
             W = rng.standard_normal((prev_dim, h_dim)) * scale
             b = np.zeros((1, h_dim))
@@ -60,6 +69,7 @@ class MultiTaskNeuralNetwork:
 
         last_hidden_dim = prev_dim
 
+        # Specialized output heads for multi-task predictions
         self.W_heads = {}
         self.b_heads = {}
         self.m_w_heads, self.v_w_heads = {}, {}
@@ -68,6 +78,7 @@ class MultiTaskNeuralNetwork:
         for head in ["cardiac", "diabetes", "life", "vascular"]:
             W = rng.standard_normal((last_hidden_dim, 1)) * np.sqrt(1.0 / last_hidden_dim)
             b = np.zeros((1, 1))
+            # Pre-bias regression heads to population averages for faster convergence
             if head == "life":
                 b[0, 0] = 78.0
             elif head == "vascular":
