@@ -11,7 +11,7 @@ from dataset_manager import get_medical_dataset, normalize
 
 st.set_page_config(
     page_title="MedAI Longevity Suite | Executive Platform",
-    page_icon="🧬",
+    page_icon=None,
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -24,7 +24,7 @@ I18N = {
         "subtitle": "Система Нейросетевой Клинической Диагностики, Оценки Рисков и 20-Летнего Прогнозирования Долголетия",
         "params_header": "Конфигурация нейросети",
         "data_header": "Источник данных",
-        "dataset_fused": "🌐 Сводный Клинический Датасет (10,000+ записей)",
+        "dataset_fused": "Сводный Клинический Датасет (10,000+ записей)",
         "num_layers": "Скрытых слоев",
         "neurons_l1": "Нейронов в слое 1",
         "neurons_l2": "Нейронов в слое 2",
@@ -38,11 +38,11 @@ I18N = {
         "reset_weights_btn": "Сбросить веса",
         "performance": "Динамика ошибки (Loss)",
         "tabs": [
-            "📊 Метрики ИИ",
+            "Метрики Модели",
             "3D Кластеры",
-            "📈 Прогноз 20 лет",
-            "🕸️ Радар признаков",
-            "🔍 XAI Вклад"
+            "Прогноз 20 лет",
+            "Радар признаков",
+            "XAI Вклад"
         ],
         "training_tab_title": "Архитектура и результаты обучения",
         "arch_title": "Архитектура нейросети",
@@ -59,8 +59,8 @@ I18N = {
         "xai_hdr": "Explainable AI (XAI): Вклад каждого биомаркера (%)",
         "xai_xlabel": "Вклад признака (%)",
         "what_if_hdr": "Симулятор медицинских вмешательств «Что, если?»",
-        "report_btn": "📥 Скачать клинический отчёт (HTML / PDF)",
-        "fhir_btn": "🌐 Скачать запись в формате HL7 FHIR (JSON)",
+        "report_btn": "Скачать клинический отчёт (HTML / PDF)",
+        "fhir_btn": "Скачать запись в формате HL7 FHIR (JSON)",
         "high_risk": "ВЫСОКИЙ РИСК",
         "low_risk": "НИЗКИЙ РИСК",
         "years": "лет",
@@ -101,7 +101,7 @@ I18N = {
         "subtitle": "Multi-Dataset Neural Clinical Diagnostics, MC Uncertainty (CI 95%) & 20-Year Trajectory",
         "params_header": "Neural Architecture Config",
         "data_header": "Data Source",
-        "dataset_fused": "🌐 Master Clinical Dataset (10,000+ records)",
+        "dataset_fused": "Master Clinical Dataset (10,000+ records)",
         "num_layers": "Hidden Layers Count",
         "neurons_l1": "Layer 1 Neurons",
         "neurons_l2": "Layer 2 Neurons",
@@ -115,11 +115,11 @@ I18N = {
         "reset_weights_btn": "Reset Weights",
         "performance": "Loss Dynamics",
         "tabs": [
-            "📊 AI Metrics",
+            "Model Metrics",
             "3D Clusters",
-            "📈 20Y Forecast",
-            "🕸️ Radar",
-            "🔍 XAI Contribution"
+            "20Y Forecast",
+            "Radar",
+            "XAI Contribution"
         ],
         "training_tab_title": "Architecture & Training Results",
         "arch_title": "Neural Network Architecture",
@@ -136,8 +136,8 @@ I18N = {
         "xai_hdr": "Explainable AI (XAI): Feature Contribution (%)",
         "xai_xlabel": "Feature Contribution (%)",
         "what_if_hdr": "'What-If' Intervention Simulator",
-        "report_btn": "📥 Download Clinical Report (HTML / PDF)",
-        "fhir_btn": "🌐 Export HL7 FHIR Record (JSON)",
+        "report_btn": "Download Clinical Report (HTML / PDF)",
+        "fhir_btn": "Export HL7 FHIR Record (JSON)",
         "high_risk": "HIGH RISK",
         "low_risk": "LOW RISK",
         "years": "yrs",
@@ -334,12 +334,11 @@ st.markdown("""
 st.markdown(f"""
 <div class="top-header">
     <div>
-        <div class="top-title">🧬 {T["title"]}</div>
+        <div class="top-title">{T["title"]}</div>
         <div class="top-subtitle">{T["subtitle"]}</div>
     </div>
     <div style="display:flex; align-items:center; gap:10px;">
-        <span style="background-color:#006c49; color:#ffffff; padding:6px 16px; border-radius:100px; font-weight:700; font-size:12px; letter-spacing:0.02em;">✨ Master Your Lifespan</span>
-        <span style="background-color:#eef6ee; color:#006c49; padding:6px 14px; border-radius:100px; font-weight:700; font-size:12px;">Clinical AI v3.0</span>
+        <span style="background-color:#006c49; color:#ffffff; padding:6px 16px; border-radius:100px; font-weight:700; font-size:12px; letter-spacing:0.02em;">Clinical Analytics Platform</span>
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -351,7 +350,7 @@ with st.sidebar:
     data_source_key = "fused_master"
     custom_csv_file = None
 
-    with st.expander("⚙️ " + T["params_header"], expanded=False):
+    with st.expander(T["params_header"], expanded=False):
         num_hidden = st.slider(T["num_layers"], min_value=1, max_value=4, value=2, step=1)
         n_l1 = st.slider(T["neurons_l1"], min_value=8, max_value=256, value=64, step=8)
         n_l2, n_l3, n_l4 = 32, 16, 8
@@ -670,7 +669,7 @@ with main_col:
         ))
         fig_3d.add_trace(go.Scatter3d(
             x=patient_3d[:, 0], y=patient_3d[:, 1], z=patient_3d[:, 2],
-            mode='markers', name="Пациент 🎯",
+            mode='markers', name="Пациент",
             marker=dict(size=12, color='#0051d5', symbol='diamond', opacity=1.0)
         ))
         fig_3d.update_layout(
@@ -771,14 +770,14 @@ with main_col:
 
     with b_col1:
         with st.container(border=True):
-            st.markdown(f"<div style='font-size:12px; font-weight:700; color:#006c49; text-transform:uppercase;'>📋 {T['recommendations_hdr']}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='font-size:12px; font-weight:700; color:#006c49; text-transform:uppercase;'>{T['recommendations_hdr']}</div>", unsafe_allow_html=True)
             st.markdown("<div style='margin-top:8px;'></div>", unsafe_allow_html=True)
             for adv in advices_list:
                 st.markdown(f"<div style='font-size:12px; color:#161d19; line-height:1.6; margin-bottom:6px;'>{adv}</div>", unsafe_allow_html=True)
 
     with b_col2:
         with st.container(border=True):
-            st.markdown(f"<div style='font-size:12px; font-weight:700; color:#ba1a1a; text-transform:uppercase;'>🩺 {T['symptoms_hdr']}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='font-size:12px; font-weight:700; color:#ba1a1a; text-transform:uppercase;'>{T['symptoms_hdr']}</div>", unsafe_allow_html=True)
             st.markdown("<div style='margin-top:8px;'></div>", unsafe_allow_html=True)
 
             st.markdown("<div style='font-size:11px; font-weight:700; color:#64748b;'>КЛЮЧЕВЫЕ ТРИГГЕРЫ РИСКА:</div>", unsafe_allow_html=True)
@@ -794,7 +793,7 @@ with main_col:
 
 with controls_col:
     with st.container(border=True):
-        st.markdown(f"<div style='font-size:12px; font-weight:700; color:#3c4a42; text-transform:uppercase;'>🧪 {T['what_if_hdr']}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='font-size:12px; font-weight:700; color:#3c4a42; text-transform:uppercase;'>{T['what_if_hdr']}</div>", unsafe_allow_html=True)
 
         sim_quit_smoke = st.checkbox(T["sim_quit_smoke"], value=(val_smoking == 1.0))
         sim_lower_bp = st.checkbox(T["sim_lower_bp"], value=False)
@@ -826,7 +825,7 @@ with controls_col:
         """, unsafe_allow_html=True)
 
     with st.container(border=True):
-        st.markdown(f"<div style='font-size:12px; font-weight:700; color:#64748b; text-transform:uppercase;'>📑 Экспорт Клинических Отчётов</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='font-size:12px; font-weight:700; color:#64748b; text-transform:uppercase;'>Экспорт Клинических Отчётов</div>", unsafe_allow_html=True)
 
         sex_display = T["sex_male"] if val_sex == 1.0 else T["sex_female"]
         rep_title = "MedAI Longevity Diagnostic Report" if lang_code == "en" else "Клинический диагностический отчёт MedAI Longevity"
@@ -855,17 +854,17 @@ with controls_col:
 </head>
 <body>
     <div style="text-align: center;">
-        <button class="btn-print" onclick="window.print()">🖨️ Распечатать / Сохранить в PDF</button>
+        <button class="btn-print" onclick="window.print()">Распечатать / Сохранить в PDF</button>
     </div>
     <div class="report-card">
         <div class="header">
             <div>
-                <div class="brand">🧬 MedAI Longevity Suite</div>
+                <div class="brand">MedAI Longevity Suite</div>
                 <div style="font-size: 13px; color: #64748b; margin-top: 2px;">Executive Clinical AI Diagnostics</div>
             </div>
             <div class="meta">
                 <div><b>Дата:</b> {st.session_state.get('cur_date', '13.08.2026')}</div>
-                <div><b>Версия ИИ:</b> v3.0 (Monte Carlo 95% CI)</div>
+                <div><b>Метод:</b> Monte Carlo Dropout (95% CI)</div>
             </div>
         </div>
 
