@@ -1,48 +1,19 @@
 import os
 import numpy as np
 
-
 def normalize(X, mins, maxs):
-    """Min-max normalize X given known feature min/max arrays."""
+
     return (X - mins) / (maxs - mins + 1e-8)
 
-
 def get_medical_dataset(n_samples=500, seed=42, test_ratio=0.2, source="synthetic", csv_file=None):
-    """
-    Generates or loads Multi-Target Epidemiological Clinical Datasets.
 
-    Supported Sources:
-    - "synthetic": Framingham & NHANES inspired cohort (500..5000 samples)
-    - "openml_heart": Real UCI Heart Disease dataset (OpenML ID 43547)
-    - "pima_diabetes": Real Pima Indians Diabetes dataset (OpenML ID 37)
-    - "fused_master": Multi-Dataset Fusion combining UCI, Pima, Framingham & NHANES
-    - "custom_csv": Custom user uploaded CSV dataset
-
-    Inputs (10 Biomarkers & Vitals):
-    0: Age (years, 30..80)
-    1: Sex (0 = Female, 1 = Male)
-    2: Resting BP (mmHg, 95..180)
-    3: Serum Cholesterol (mg/dL, 150..350)
-    4: Fasting Glucose (mg/dL, 70..220)
-    5: Max Heart Rate (bpm, 90..200)
-    6: ST Depression (ECG, 0.0..4.5)
-    7: BMI (kg/m², 18.5..40.0)
-    8: Physical Activity (0.0..1.0)
-    9: Smoking Flag (0 = Non-smoker, 1 = Smoker)
-
-    Outputs (4 Multi-Task Targets):
-    - Target 0: Cardiac Risk (0 or 1)
-    - Target 1: Type-II Diabetes Risk (0 or 1)
-    - Target 2: Life Expectancy (years, 60..90)
-    - Target 3: Biological Vascular Age (years, 25..85)
-    """
     rng = np.random.default_rng(seed)
 
     mins = np.array([1.0, 0.0, 50.0, 50.0, 40.0, 40.0, 0.0, 10.0, 0.0, 0.0])
     maxs = np.array([120.0, 1.0, 250.0, 500.0, 400.0, 220.0, 6.0, 60.0, 1.0, 1.0])
 
     if source == "fused_master":
-        # Multi-Dataset Fusion: Load OpenML Heart + Synthetic Cohort + Derivations
+
         try:
             d_heart = get_medical_dataset(n_samples=500, seed=seed, source="openml_heart")
             d_pima = get_medical_dataset(n_samples=500, seed=seed+1, source="pima_diabetes")
@@ -69,7 +40,7 @@ def get_medical_dataset(n_samples=500, seed=42, test_ratio=0.2, source="syntheti
             bmi = np.where(df.iloc[:, 5].values > 0, df.iloc[:, 5].values.astype(float), 25.0)
             age = df.iloc[:, 7].values.astype(float)
 
-            sex = np.zeros_like(age)  # All Pima dataset patients are female
+            sex = np.zeros_like(age)
             chol = 180.0 + 0.5 * (glucose - 100) + rng.normal(0, 10, len(age))
             max_hr = 160.0 - 0.5 * (age - 30) + rng.normal(0, 8, len(age))
             st_dep = np.clip(rng.exponential(scale=0.5, size=len(age)), 0.0, 4.0)
@@ -78,7 +49,7 @@ def get_medical_dataset(n_samples=500, seed=42, test_ratio=0.2, source="syntheti
 
             raw_X = np.column_stack([age, sex, bp, chol, glucose, max_hr, st_dep, bmi, activity, smoking])
             y_diabetes = (y_sr.values.astype(int) == 1).astype(float).reshape(-1, 1)
-            
+
             cardiac_score = 0.03 * (age - 45) + 0.02 * (bp - 120) + 0.015 * (chol - 200) + 0.6 * st_dep
             y_cardiac = (1 / (1 + np.exp(-cardiac_score)) > 0.5).astype(float).reshape(-1, 1)
             life_expectancy = np.clip(85.0 - 0.07 * (bp - 120) - 0.05 * (glucose - 100) - 3.0 * y_diabetes.ravel(), 58.0, 92.0).reshape(-1, 1)
@@ -132,7 +103,7 @@ def get_medical_dataset(n_samples=500, seed=42, test_ratio=0.2, source="syntheti
 
             raw_X = np.column_stack([age, sex, bp, chol, glucose, max_hr, st_dep, bmi, activity, smoking])
             y_cardiac = (y_sr.values.astype(int) == 2).astype(float).reshape(-1, 1) if y_sr.dtype != float else (y_sr.values > 1).astype(float).reshape(-1, 1)
-            
+
             diabetes_score = 0.03 * (glucose - 100) + 0.05 * (bmi - 25)
             y_diabetes = (1 / (1 + np.exp(-diabetes_score)) > 0.5).astype(float).reshape(-1, 1)
             life_expectancy = np.clip(82.0 - 0.08 * (bp - 120) - 0.03 * (chol - 200) - 4.0 * y_cardiac.ravel(), 55.0, 92.0).reshape(-1, 1)
@@ -142,7 +113,7 @@ def get_medical_dataset(n_samples=500, seed=42, test_ratio=0.2, source="syntheti
             return get_medical_dataset(n_samples=n_samples, seed=seed, test_ratio=test_ratio, source="synthetic")
 
     else:
-        # Standard synthetic Framingham/NHANES cohort generator
+
         age = rng.uniform(1, 105, n_samples)
         sex = rng.binomial(1, 0.52, size=n_samples).astype(float)
         bp = rng.uniform(70, 200, n_samples)
@@ -211,7 +182,6 @@ def get_medical_dataset(n_samples=500, seed=42, test_ratio=0.2, source="syntheti
 
     norm_X = normalize(raw_X, mins, maxs)
 
-    # Train / Test split
     n_test = max(1, int(n_samples * test_ratio))
     indices = rng.permutation(n_samples)
     test_idx = indices[:n_test]
@@ -235,24 +205,24 @@ def get_medical_dataset(n_samples=500, seed=42, test_ratio=0.2, source="syntheti
         "n_samples": n_samples,
         "raw_X": raw_X,
         "norm_X": norm_X,
-        # Full targets
+
         "y_cardiac": y_cardiac,
         "y_diabetes": y_diabetes,
         "y_life_expectancy": life_expectancy,
         "y_vascular_age": vascular_age,
-        # Train split
+
         "X_train": norm_X[train_idx],
         "y_cardiac_train": y_cardiac[train_idx],
         "y_diabetes_train": y_diabetes[train_idx],
         "y_life_train": life_expectancy[train_idx],
         "y_vascular_train": vascular_age[train_idx],
-        # Test split
+
         "X_test": norm_X[test_idx],
         "y_cardiac_test": y_cardiac[test_idx],
         "y_diabetes_test": y_diabetes[test_idx],
         "y_life_test": life_expectancy[test_idx],
         "y_vascular_test": vascular_age[test_idx],
-        # Metadata
+
         "mins": mins,
         "maxs": maxs,
         "feature_meta": feature_meta,

@@ -1,7 +1,4 @@
-"""
-Tests for MedAI Longevity Platform — Neural Engine, Multi-Dataset Fusion, Monte Carlo Uncertainty & FHIR Export.
-Run: pytest test_neural_network.py -v
-"""
+
 import os
 import json
 import tempfile
@@ -10,9 +7,6 @@ import pytest
 
 from dataset_manager import get_medical_dataset, normalize
 from neural_network import MultiTaskNeuralNetwork, LOSS_WEIGHTS
-
-
-# ──────────────────── Dataset Tests ────────────────────
 
 class TestDatasetManager:
     def test_dataset_shape(self):
@@ -57,9 +51,6 @@ class TestDatasetManager:
         data = get_medical_dataset(n_samples=100, source="fused_master")
         assert data["norm_X"].shape[1] == 10
         assert data["norm_X"].shape[0] >= 100
-
-
-# ──────────────────── Neural Network & MC Uncertainty Tests ────────────────────
 
 class TestMultiTaskNeuralNetwork:
     @pytest.fixture
@@ -138,9 +129,6 @@ class TestMultiTaskNeuralNetwork:
         assert parsed["resourceType"] == "DiagnosticReport"
         assert parsed["result"][0]["value"] == 75.4
 
-
-# ──────────────────── Edge Case Tests ────────────────────
-
 class TestEdgeCases:
     def test_single_sample_forward(self):
         nn = MultiTaskNeuralNetwork(input_dim=10, hidden_sizes=[8])
@@ -153,7 +141,6 @@ class TestEdgeCases:
         X = np.zeros((3, 10))
         preds = nn.forward(X)
         assert not np.any(np.isnan(preds["cardiac"]))
-
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
