@@ -504,7 +504,6 @@ with controls_col:
         u_activity = st.slider(T["slider_activity"], 0.0, 1.0, 0.5, step=0.1)
         u_smoking = st.pills(T["slider_smoking"], [T["smoke_no"], T["smoke_yes"]], default=T["smoke_no"])
         val_smoking = 1.0 if u_smoking == T["smoke_yes"] else 0.0
-        val_smoking = 1.0 if u_smoking == T["smoke_yes"] else 0.0
 
         raw_vec = np.array([u_age, val_sex, u_bp, u_chol, u_glucose, u_max_hr, u_st_dep, u_bmi, u_activity, val_smoking])
         norm_vec = normalize(raw_vec, mins, maxs)
@@ -739,7 +738,7 @@ with main_col:
                 st.markdown(render_metric_card(T["cardiac_risk_hdr"], f"{T['accuracy']}: {em['acc_cardiac']*100:.1f}%"), unsafe_allow_html=True)
                 st.markdown(render_metric_card(T["life_exp_hdr"], f"{T['mae']}: {em['mae_life']:.2f} {T['years']}"), unsafe_allow_html=True)
             with m2:
-                st.markdown(render_metric_card(render_metric_card_title := T["diabetes_risk_hdr"], f"{T['accuracy']}: {em['acc_diabetes']*100:.1f}%"), unsafe_allow_html=True)
+                st.markdown(render_metric_card(T["diabetes_risk_hdr"], f"{T['accuracy']}: {em['acc_diabetes']*100:.1f}%"), unsafe_allow_html=True)
                 st.markdown(render_metric_card(T["vascular_age_hdr"], f"{T['mae']}: {em['mae_vascular']:.2f} {T['years']}"), unsafe_allow_html=True)
 
     with main_tabs[1]:

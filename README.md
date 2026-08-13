@@ -42,7 +42,7 @@ streamlit run app.py
 ├── dataset_manager.py     # Synthetic clinical dataset generator
 ├── test_neural_network.py # Automated tests
 ├── requirements.txt       # Pinned dependencies
-├── .streamlit/config.toml # Streamlit dark theme configuration
+├── .streamlit/config.toml # Streamlit executive light theme configuration
 └── README.md              # This file
 ```
 
