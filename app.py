@@ -837,20 +837,20 @@ with controls_col:
     <meta charset="utf-8">
     <title>{rep_title}</title>
     <style>
-        body {   font-family: 'Inter', system-ui, -apple-system, sans-serif; background: #f8fafc; color: #0f172a; margin: 0; padding: 32px; }
-        .report-card {   background: #ffffff; max-width: 850px; margin: 0 auto; border-radius: 16px; border: 1px solid #e2e8f0; padding: 40px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
-        .header {   display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #006c49; padding-bottom: 20px; margin-bottom: 24px; }
-        .brand {   font-size: 24px; font-weight: 800; color: #006c49; }
-        .meta {   font-size: 12px; color: #64748b; text-align: right; }
-        .patient-box {   background: #f4fbf4; border: 1px solid #dde4dd; border-radius: 12px; padding: 16px; margin-bottom: 24px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; font-size: 13px; }
-        .metrics-grid {   display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 28px; }
-        .metric-tile {   background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; border-left: 5px solid #006c49; }
-        .metric-title {   font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; }
-        .metric-val {   font-size: 22px; font-weight: 800; color: #006c49; margin-top: 4px; font-family: monospace; }
-        .section-title {   font-size: 16px; font-weight: 700; color: #006c49; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; margin-top: 24px; margin-bottom: 12px; }
-        .adv-list {   font-size: 13px; line-height: 1.6; color: #334155; }
-        .btn-print {   background: #006c49; color: #ffffff; border: none; padding: 10px 24px; border-radius: 100px; font-weight: 700; cursor: pointer; margin-bottom: 20px; font-size: 13px; }
-        @media print {   .btn-print {   display: none; }   body {   padding: 0; background: white; }   .report-card {   border: none; box-shadow: none; padding: 0; }   }
+        body {{   font-family: 'Inter', system-ui, -apple-system, sans-serif; background: #f8fafc; color: #0f172a; margin: 0; padding: 32px; }}
+        .report-card {{   background: #ffffff; max-width: 850px; margin: 0 auto; border-radius: 16px; border: 1px solid #e2e8f0; padding: 40px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }}
+        .header {{   display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #006c49; padding-bottom: 20px; margin-bottom: 24px; }}
+        .brand {{   font-size: 24px; font-weight: 800; color: #006c49; }}
+        .meta {{   font-size: 12px; color: #64748b; text-align: right; }}
+        .patient-box {{   background: #f4fbf4; border: 1px solid #dde4dd; border-radius: 12px; padding: 16px; margin-bottom: 24px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; font-size: 13px; }}
+        .metrics-grid {{   display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 28px; }}
+        .metric-tile {{   background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; border-left: 5px solid #006c49; }}
+        .metric-title {{   font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; }}
+        .metric-val {{   font-size: 22px; font-weight: 800; color: #006c49; margin-top: 4px; font-family: monospace; }}
+        .section-title {{   font-size: 16px; font-weight: 700; color: #006c49; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; margin-top: 24px; margin-bottom: 12px; }}
+        .adv-list {{   font-size: 13px; line-height: 1.6; color: #334155; }}
+        .btn-print {{   background: #006c49; color: #ffffff; border: none; padding: 10px 24px; border-radius: 100px; font-weight: 700; cursor: pointer; margin-bottom: 20px; font-size: 13px; }}
+        @media print {{   .btn-print {{   display: none; }}   body {{   padding: 0; background: white; }}   .report-card {{   border: none; box-shadow: none; padding: 0; }}   }}
     </style>
 </head>
 <body>
