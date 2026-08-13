@@ -94,7 +94,24 @@ I18N = {
         "smoke_yes": "Да",
         "trajectory_title": "Прогноз долголетия и риска на 20 лет вперед",
         "radar_title": "Отклонение биомаркеров пациента от нормы здоровой когорты",
-        "presets_hdr": "Быстрый выбор профиля пациента:"
+        "presets_hdr": "Быстрый выбор профиля пациента:",
+        "patient_biomarkers": "Биомаркеры Пациента",
+        "biomarkers_subtitle": "Полный физиологический диапазон (Возраст 1..120 лет)",
+        "risk_triggers_hdr": "КЛЮЧЕВЫЕ ТРИГГЕРЫ РИСКА:",
+        "clinical_symptoms_hdr": "ВОЗМОЖНЫЕ КЛИНИЧЕСКИЕ ПРОЯВЛЕНИЯ:",
+        "export_reports_hdr": "Экспорт Клинических Отчётов",
+        "print_btn": "Распечатать / Сохранить в PDF",
+        "patient_label": "Пациент",
+        "training_steps_label": "Шаги обучения",
+        "current_track": "Текущий трек (Кардио-риск %)",
+        "opt_track": "Оптимизированный трек (Риск %)",
+        "vascular_age_line": "Сосудистый возраст (лет)",
+        "years_forward": "Годы (вперед)",
+        "healthy_ref": "Здоровый эталон",
+        "biomarker": "Биомаркер",
+        "no_symptoms_noted": "• Патологических симптомов не выявлено.",
+        "training_complete": "Обучение завершено! Веса сохранены.",
+        "arch_graph_title": "Графическая Архитектура Мультизадачной Нейросети"
     },
     "en": {
         "title": "MedAI Longevity Platform",
@@ -131,7 +148,7 @@ I18N = {
         "diabetes_risk_hdr": "Diabetes II Risk (CI 95%)",
         "life_exp_hdr": "Life Expectancy (CI 95%)",
         "vascular_age_hdr": "Vascular Age (CI 95%)",
-        "recommendations_hdr": "Personalized Action Plan",
+        "recommendations_hdr": "Personalized Longevity Action Plan",
         "symptoms_hdr": "Root Causes & Symptom Trigger Analysis",
         "xai_hdr": "Explainable AI (XAI): Feature Contribution (%)",
         "xai_xlabel": "Feature Contribution (%)",
@@ -171,7 +188,24 @@ I18N = {
         "smoke_yes": "Yes",
         "trajectory_title": "20-Year Health & Longevity Trajectory Forecast",
         "radar_title": "Patient Biomarker Deviation vs Healthy Peer Baseline",
-        "presets_hdr": "Quick Patient Profile Presets:"
+        "presets_hdr": "Quick Patient Profile Presets:",
+        "patient_biomarkers": "Patient Biomarkers",
+        "biomarkers_subtitle": "Full physiological range (Age 1..120 years)",
+        "risk_triggers_hdr": "KEY RISK TRIGGERS:",
+        "clinical_symptoms_hdr": "EXPECTED CLINICAL SYMPTOMS:",
+        "export_reports_hdr": "Export Clinical Reports",
+        "print_btn": "Print / Save as PDF",
+        "patient_label": "Patient",
+        "training_steps_label": "Training Steps",
+        "current_track": "Current Track (Cardiac Risk %)",
+        "opt_track": "Optimized Track (Risk %)",
+        "vascular_age_line": "Vascular Age (years)",
+        "years_forward": "Years (forward)",
+        "healthy_ref": "Healthy Reference",
+        "biomarker": "Biomarker",
+        "no_symptoms_noted": "• No pathological symptoms noted.",
+        "training_complete": "Training complete! Weights saved.",
+        "arch_graph_title": "Multi-Task Neural Network Architecture"
     }
 }
 
@@ -338,7 +372,7 @@ st.markdown(f"""
         <div class="top-subtitle">{T["subtitle"]}</div>
     </div>
     <div style="display:flex; align-items:center; gap:10px;">
-        <span style="background-color:#006c49; color:#ffffff; padding:6px 16px; border-radius:100px; font-weight:700; font-size:12px; letter-spacing:0.02em;">Clinical Analytics Platform</span>
+        <span style="background-color:#006c49; color:#ffffff; padding:6px 16px; border-radius:100px; font-weight:700; font-size:12px; letter-spacing:0.02em;">Master Your Lifespan</span>
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -448,14 +482,14 @@ if 'run_training_btn' in locals() and run_training_btn:
         "mae_life": mae_l,
         "mae_vascular": mae_v
     }
-    st.sidebar.success("Обучение завершено! Веса сохранены.")
+    st.sidebar.success(T["training_complete"])
 
 main_col, controls_col = st.columns([2.1, 1])
 
 with controls_col:
     with st.container(border=True):
-        st.markdown(f"<div style='font-size:12px; font-weight:700; color:#3c4a42; text-transform:uppercase;'>Биомаркеры Пациента</div>", unsafe_allow_html=True)
-        st.markdown(f"<div style='font-size:11px; color:#64748b; margin-top:2px; margin-bottom:10px;'>Полный физиологический диапазон (Возраст 1..120 лет)</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='font-size:12px; font-weight:700; color:#3c4a42; text-transform:uppercase;'>{T['patient_biomarkers']}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='font-size:11px; color:#64748b; margin-top:2px; margin-bottom:10px;'>{T['biomarkers_subtitle']}</div>", unsafe_allow_html=True)
 
         u_age = st.slider(T["slider_age"], 1, 120, 45)
         u_sex = st.pills(T["slider_sex"], [T["sex_male"], T["sex_female"]], default=T["sex_male"])
@@ -538,6 +572,83 @@ def generate_clinical_analysis(raw_vec, p_cardiac, p_diabetes, p_life, p_vascula
 
     return triggers, symptoms, advices
 
+def render_neural_architecture_diagram(hidden_sizes, lang="ru"):
+    layer_names = [
+        "Input (10)" if lang=="en" else "Вход (10)",
+    ] + [
+        (f"Hidden {i+1} ({h})" if lang=="en" else f"Скрытый {i+1} ({h})") for i, h in enumerate(hidden_sizes)
+    ] + [
+        "Outputs (4)" if lang=="en" else "Выходы (4)"
+    ]
+    
+    input_nodes = ["Age", "Sex", "BP", "Chol", "Glucose", "Max HR", "ST Dep", "BMI", "Activity", "Smoking"]
+    output_nodes = ["Cardiac Risk", "Diabetes Risk", "Life Expectancy", "Vascular Age"] if lang=="en" else ["Кардио-риск", "Риск Диабета", "Ожид. жизнь", "Сосуд. возраст"]
+    
+    layers_data = []
+    layers_data.append([(0, (i + 1) / 11.0, input_nodes[i], "#10b981") for i in range(10)])
+    
+    for l_idx, h_dim in enumerate(hidden_sizes):
+        col_x = l_idx + 1
+        n_show = min(h_dim, 6)
+        layer_nodes = []
+        for i in range(n_show):
+            lbl = f"H{l_idx+1}.{i+1}"
+            y_pos = (i + 1) / (n_show + 1.0)
+            layer_nodes.append((col_x, y_pos, lbl, "#006c49"))
+        layers_data.append(layer_nodes)
+        
+    out_x = len(hidden_sizes) + 1
+    out_nodes = []
+    out_colors = ["#ba1a1a", "#d97706", "#0051d5", "#059669"]
+    for i in range(4):
+        out_nodes.append((out_x, (i + 1) / 5.0, output_nodes[i], out_colors[i]))
+    layers_data.append(out_nodes)
+    
+    fig = go.Figure()
+    
+    for l in range(len(layers_data) - 1):
+        curr_layer = layers_data[l]
+        next_layer = layers_data[l+1]
+        for n1 in curr_layer:
+            for n2 in next_layer:
+                fig.add_trace(go.Scatter(
+                    x=[n1[0], n2[0]],
+                    y=[n1[1], n2[1]],
+                    mode='lines',
+                    line=dict(color='rgba(0, 108, 73, 0.12)', width=1),
+                    hoverinfo='none',
+                    showlegend=False
+                ))
+                
+    for l_idx, layer_nodes in enumerate(layers_data):
+        x_vals = [n[0] for n in layer_nodes]
+        y_vals = [n[1] for n in layer_nodes]
+        labels = [n[2] for n in layer_nodes]
+        colors = [n[3] for n in layer_nodes]
+        
+        fig.add_trace(go.Scatter(
+            x=x_vals, y=y_vals,
+            mode='markers+text',
+            marker=dict(size=22, color=colors, line=dict(color='#ffffff', width=2)),
+            text=labels,
+            textposition="top center" if l_idx % 2 == 0 else "bottom center",
+            textfont=dict(size=10, family="Inter", color="#334155"),
+            name=layer_names[l_idx],
+            hoverinfo='text'
+        ))
+        
+    fig.update_layout(
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='#f4fbf4',
+        font=dict(family='Inter', color='#3c4a42', size=11),
+        margin=dict(l=20, r=20, t=20, b=20),
+        height=300,
+        showlegend=False,
+        xaxis=dict(showgrid=False, zeroline=False, showticklabels=False, range=[-0.5, out_x + 0.5]),
+        yaxis=dict(showgrid=False, zeroline=False, showticklabels=False, range=[0, 1.05])
+    )
+    return fig
+
 triggers_list, symptoms_list, advices_list = generate_clinical_analysis(raw_vec, p_cardiac, p_diabetes, p_life, p_vascular, lang_code)
 
 with main_col:
@@ -600,18 +711,6 @@ with main_col:
     main_tabs = st.tabs(T["tabs"])
 
     with main_tabs[0]:
-        st.markdown(f"<div style='font-size:15px; font-weight:700; color:#006c49; margin-bottom: 12px;'>{T['arch_title']}</div>", unsafe_allow_html=True)
-
-        badges = [f"<span style='background-color:#006c49; color:#ffffff; padding:6px 14px; border-radius:20px; font-weight:700; font-size:12px;'>Вход (10)</span>"]
-        for idx, h_size in enumerate(nn.hidden_sizes):
-            badges.append(f"<span style='background-color:#006c49; color:#ffffff; padding:6px 14px; border-radius:20px; font-weight:700; font-size:12px;'>Слой {idx+1} ({h_size})</span>")
-        badges.append(f"<span style='background-color:#006c49; color:#ffffff; padding:6px 14px; border-radius:20px; font-weight:700; font-size:12px;'>Выходы (4)</span>")
-
-        arch_html = " <span style='color:#006c49; font-weight:900;'>➔</span> ".join(badges)
-        st.markdown(f"<div style='margin-bottom:12px; display:flex; align-items:center; flex-wrap:wrap; gap:6px;'>{arch_html}</div>", unsafe_allow_html=True)
-
-        st.markdown("---")
-
         c1, c2 = st.columns(2)
         with c1:
             st.markdown(f"<div style='font-size:14px; font-weight:700; color:#3c4a42; margin-bottom: 10px;'>{T['loss_title']}</div>", unsafe_allow_html=True)
@@ -619,7 +718,7 @@ with main_col:
             fig_loss = go.Figure()
             fig_loss.add_trace(go.Scatter(y=losses_to_show, mode='lines+markers', name='Loss', line=dict(color='#006c49', width=2)))
             fig_loss.update_layout(height=220, margin=dict(l=0, r=0, t=10, b=0), plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
-            fig_loss.update_xaxes(title_text='Шаги обучения', gridcolor='#dde4dd')
+            fig_loss.update_xaxes(title_text=T['training_steps_label'], gridcolor='#dde4dd')
             fig_loss.update_yaxes(title_text='Loss', gridcolor='#dde4dd')
             st.plotly_chart(fig_loss, use_container_width=True, config={'displayModeBar': False})
 
@@ -669,7 +768,7 @@ with main_col:
         ))
         fig_3d.add_trace(go.Scatter3d(
             x=patient_3d[:, 0], y=patient_3d[:, 1], z=patient_3d[:, 2],
-            mode='markers', name="Пациент",
+            mode='markers', name=T["patient_label"],
             marker=dict(size=12, color='#0051d5', symbol='diamond', opacity=1.0)
         ))
         fig_3d.update_layout(
@@ -712,9 +811,9 @@ with main_col:
             opt_cardiac_risk_traj.append(float(sim_opt_preds["cardiac"][0, 0]) * 100.0)
 
         fig_traj = go.Figure()
-        fig_traj.add_trace(go.Scatter(x=years_future, y=base_cardiac_risk_traj, mode='lines+markers', name="Текущий трек (Кардио-риск %)", line=dict(color='#ba1a1a', width=2)))
-        fig_traj.add_trace(go.Scatter(x=years_future, y=opt_cardiac_risk_traj, mode='lines+markers', name="Оптимизированный трек (Риск %)", line=dict(color='#10b981', width=2, dash='dash')))
-        fig_traj.add_trace(go.Scatter(x=years_future, y=base_vascular_traj, mode='lines+markers', name="Сосудистый возраст (лет)", line=dict(color='#0051d5', width=2)))
+        fig_traj.add_trace(go.Scatter(x=years_future, y=base_cardiac_risk_traj, mode='lines+markers', name=T["current_track"], line=dict(color='#ba1a1a', width=2)))
+        fig_traj.add_trace(go.Scatter(x=years_future, y=opt_cardiac_risk_traj, mode='lines+markers', name=T["opt_track"], line=dict(color='#10b981', width=2, dash='dash')))
+        fig_traj.add_trace(go.Scatter(x=years_future, y=base_vascular_traj, mode='lines+markers', name=T["vascular_age_line"], line=dict(color='#0051d5', width=2)))
 
         fig_traj.update_layout(
             paper_bgcolor='rgba(0,0,0,0)',
@@ -724,17 +823,22 @@ with main_col:
             height=360,
             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0)
         )
-        fig_traj.update_xaxes(title="Годы (вперед)", showgrid=True, gridcolor='#dde4dd')
+        fig_traj.update_xaxes(title=T["years_forward"], showgrid=True, gridcolor='#dde4dd')
         st.plotly_chart(fig_traj, use_container_width=True)
 
     with main_tabs[3]:
-        categories = ['Давление', 'Холестерин', 'Глюкоза', 'ИМТ', 'Депрессия ST', 'Курение']
+        categories = ['Давление' if lang_code=='ru' else 'BP', 
+                      'Холестерин' if lang_code=='ru' else 'Cholesterol', 
+                      'Глюкоза' if lang_code=='ru' else 'Glucose', 
+                      'ИМТ' if lang_code=='ru' else 'BMI', 
+                      'Депрессия ST' if lang_code=='ru' else 'ST Dep', 
+                      'Курение' if lang_code=='ru' else 'Smoking']
         patient_vals = [u_bp/180.0, u_chol/350.0, u_glucose/220.0, u_bmi/40.0, u_st_dep/4.5, val_smoking]
         healthy_ref = [120/180.0, 190/350.0, 90/220.0, 22.5/40.0, 0.2/4.5, 0.0]
 
         fig_radar = go.Figure()
-        fig_radar.add_trace(go.Scatterpolar(r=patient_vals, theta=categories, fill='toself', name='Пациент', line_color='#0051d5'))
-        fig_radar.add_trace(go.Scatterpolar(r=healthy_ref, theta=categories, fill='toself', name='Здоровый эталон', line_color='#10b981', opacity=0.5))
+        fig_radar.add_trace(go.Scatterpolar(r=patient_vals, theta=categories, fill='toself', name=T["patient_label"], line_color='#0051d5'))
+        fig_radar.add_trace(go.Scatterpolar(r=healthy_ref, theta=categories, fill='toself', name=T["healthy_ref"], line_color='#10b981', opacity=0.5))
 
         fig_radar.update_layout(
             paper_bgcolor='rgba(0,0,0,0)',
@@ -752,7 +856,7 @@ with main_col:
 
         fig_xai = px.bar(
             x=attributions, y=feature_names, orientation='h',
-            labels={'x': T["xai_xlabel"], 'y': 'Биомаркер'},
+            labels={'x': T["xai_xlabel"], 'y': T["biomarker"]},
             color=attributions, color_continuous_scale='emrld'
         )
         fig_xai.update_layout(
@@ -780,16 +884,22 @@ with main_col:
             st.markdown(f"<div style='font-size:12px; font-weight:700; color:#ba1a1a; text-transform:uppercase;'>{T['symptoms_hdr']}</div>", unsafe_allow_html=True)
             st.markdown("<div style='margin-top:8px;'></div>", unsafe_allow_html=True)
 
-            st.markdown("<div style='font-size:11px; font-weight:700; color:#64748b;'>КЛЮЧЕВЫЕ ТРИГГЕРЫ РИСКА:</div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='font-size:11px; font-weight:700; color:#64748b;'>{T['risk_triggers_hdr']}</div>", unsafe_allow_html=True)
             for trg in triggers_list:
                 st.markdown(f"<span style='background:#ffdad6; color:#ba1a1a; padding:2px 8px; border-radius:100px; font-size:11px; font-weight:700; margin-right:4px;'>{trg}</span>", unsafe_allow_html=True)
 
-            st.markdown("<div style='margin-top:10px; font-size:11px; font-weight:700; color:#64748b;'>ВОЗМОЖНЫЕ КЛИНИЧЕСКИЕ ПРОЯВЛЕНИЯ:</div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='margin-top:10px; font-size:11px; font-weight:700; color:#64748b;'>{T['clinical_symptoms_hdr']}</div>", unsafe_allow_html=True)
             if symptoms_list:
                 for sym in symptoms_list:
                     st.markdown(f"<div style='font-size:12px; color:#475569; line-height:1.5;'>• {sym}</div>", unsafe_allow_html=True)
             else:
-                st.markdown("<div style='font-size:12px; color:#006c49;'>• Патологических симптомов не выявлено.</div>", unsafe_allow_html=True)
+                st.markdown(f"<div style='font-size:12px; color:#006c49;'>{T['no_symptoms_noted']}</div>", unsafe_allow_html=True)
+
+    st.markdown("<div style='margin-top:16px;'></div>", unsafe_allow_html=True)
+    with st.container(border=True):
+        st.markdown(f"<div style='font-size:12px; font-weight:700; color:#006c49; text-transform:uppercase; margin-bottom:8px;'>{T['arch_graph_title']}</div>", unsafe_allow_html=True)
+        fig_arch = render_neural_architecture_diagram(nn.hidden_sizes, lang_code)
+        st.plotly_chart(fig_arch, use_container_width=True, config={'displayModeBar': False})
 
 with controls_col:
     with st.container(border=True):
