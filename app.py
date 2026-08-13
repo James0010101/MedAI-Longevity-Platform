@@ -1,5 +1,7 @@
 import os
 import json
+import datetime
+import logging
 import streamlit as st
 import numpy as np
 from sklearn.decomposition import PCA
@@ -375,6 +377,10 @@ st.markdown(f"""
         <span style="background-color:#006c49; color:#ffffff; padding:6px 16px; border-radius:100px; font-weight:700; font-size:12px; letter-spacing:0.02em;">Master Your Lifespan</span>
     </div>
 </div>
+<div style="background-color: #fff8e6; border: 1px solid #ffe58f; border-radius: 8px; padding: 8px 16px; margin-bottom: 20px; font-size: 12px; color: #8c6b00; display: flex; align-items: center; gap: 8px;">
+    <span>⚠️</span>
+    <span><strong>{'RESEARCH & EDUCATIONAL DEMO ONLY' if lang_code == 'en' else 'ИССЛЕДОВАТЕЛЬСКИЙ И УЧЕБНЫЙ ДЕМО-СТЕНД'}:</strong> {'This platform is a proof-of-concept AI system trained on synthetic clinical data. It is NOT a certified medical device and must NOT be used for clinical decision-making or diagnosis.' if lang_code == 'en' else 'Данная платформа является концептуальной ИИ-системой на синтетических данных. Она НЕ является сертифицированным медицинским изделием и НЕ должна использоваться для клинических решений или диагнозов.'}</span>
+</div>
 """, unsafe_allow_html=True)
 
 with st.sidebar:
@@ -426,8 +432,7 @@ y_cardiac = data_dict["y_cardiac"]
 mins = np.array([1.0, 0.0, 50.0, 50.0, 40.0, 40.0, 0.0, 10.0, 0.0, 0.0])
 maxs = np.array([120.0, 1.0, 250.0, 500.0, 400.0, 220.0, 6.0, 60.0, 1.0, 1.0])
 
-if 'hidden_sizes' not in locals():
-    hidden_sizes = [64, 32]
+# hidden_sizes is always defined above via sidebar sliders
 
 if 'nn_model' not in st.session_state:
     if os.path.exists(WEIGHTS_FILE):
@@ -470,11 +475,17 @@ if 'run_training_btn' in locals() and run_training_btn:
     nn.save_weights(WEIGHTS_FILE)
     st.session_state['training_losses'] = losses
 
-    out = nn.forward(X_train)
-    acc_c = np.mean((out["cardiac"].ravel() > 0.5) == y_cardiac_train.ravel())
-    acc_d = np.mean((out["diabetes"].ravel() > 0.5) == y_diabetes_train.ravel())
-    mae_l = np.mean(np.abs(out["life"].ravel() - y_life_train.ravel()))
-    mae_v = np.mean(np.abs(out["vascular"].ravel() - y_vascular_train.ravel()))
+    # Evaluate on TEST set (not train) to avoid data leakage
+    X_test = data_dict["X_test"]
+    y_cardiac_test = data_dict["y_cardiac_test"]
+    y_diabetes_test = data_dict["y_diabetes_test"]
+    y_life_test = data_dict["y_life_test"]
+    y_vascular_test = data_dict["y_vascular_test"]
+    out = nn.forward(X_test)
+    acc_c = np.mean((out["cardiac"].ravel() > 0.5) == y_cardiac_test.ravel())
+    acc_d = np.mean((out["diabetes"].ravel() > 0.5) == y_diabetes_test.ravel())
+    mae_l = np.mean(np.abs(out["life"].ravel() - y_life_test.ravel()))
+    mae_v = np.mean(np.abs(out["vascular"].ravel() - y_vascular_test.ravel()))
 
     st.session_state['eval_metrics'] = {
         "acc_cardiac": acc_c,
@@ -655,9 +666,10 @@ with main_col:
     k1, k2, k3, k4 = st.columns(4)
 
     with k1:
+        _cardiac_ind = '#ba1a1a' if p_cardiac > 0.5 else '#10b981'
         st.markdown(f"""
         <div class="telemetry-card">
-            <div class="telemetry-indicator" style="background:#10b981;" if "{p_cardiac <= 0.5}" else "background:#ba1a1a;"></div>
+            <div class="telemetry-indicator" style="background:{_cardiac_ind};"></div>
             <div class="telemetry-label">{T["cardiac_risk_hdr"]}</div>
             <div class="telemetry-value" style="color:{'#ba1a1a' if p_cardiac > 0.5 else '#006c49'};">{p_cardiac * 100:.1f}%</div>
             <div class="telemetry-badge" style="background:{'#ffdad6' if p_cardiac > 0.5 else '#eef6ee'}; color:{'#ba1a1a' if p_cardiac > 0.5 else '#006c49'};">
@@ -667,9 +679,10 @@ with main_col:
         """, unsafe_allow_html=True)
 
     with k2:
+        _diabetes_ind = '#ba1a1a' if p_diabetes > 0.5 else '#10b981'
         st.markdown(f"""
         <div class="telemetry-card">
-            <div class="telemetry-indicator" style="background:#10b981;" if "{p_diabetes <= 0.5}" else "background:#ba1a1a;"></div>
+            <div class="telemetry-indicator" style="background:{_diabetes_ind};"></div>
             <div class="telemetry-label">{T["diabetes_risk_hdr"]}</div>
             <div class="telemetry-value" style="color:{'#ba1a1a' if p_diabetes > 0.5 else '#006c49'};">{p_diabetes * 100:.1f}%</div>
             <div class="telemetry-badge" style="background:{'#ffdad6' if p_diabetes > 0.5 else '#eef6ee'}; color:{'#ba1a1a' if p_diabetes > 0.5 else '#006c49'};">
@@ -873,26 +886,66 @@ with main_col:
 
     with b_col1:
         with st.container(border=True):
-            st.markdown(f"<div style='font-size:12px; font-weight:700; color:#006c49; text-transform:uppercase;'>{T['recommendations_hdr']}</div>", unsafe_allow_html=True)
-            st.markdown("<div style='margin-top:8px;'></div>", unsafe_allow_html=True)
+            st.markdown(f"""
+            <div style='display:flex; align-items:center; gap:8px; margin-bottom:12px; border-bottom:1px solid #eef6ee; padding-bottom:8px;'>
+                <div style='background:#eef6ee; color:#006c49; width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700;'>📋</div>
+                <div style='font-size:13px; font-weight:700; color:#006c49; letter-spacing:0.04em; text-transform:uppercase;'>{T['recommendations_hdr']}</div>
+            </div>
+            """, unsafe_allow_html=True)
             for adv in advices_list:
-                st.markdown(f"<div style='font-size:12px; color:#161d19; line-height:1.6; margin-bottom:6px;'>{adv}</div>", unsafe_allow_html=True)
+                clean_adv = adv.replace("• ", "")
+                st.markdown(f"""
+                <div style='background:#f8faf8; border:1px solid #eef6ee; border-radius:10px; padding:10px 14px; margin-bottom:8px; font-size:12px; color:#1e293b; line-height:1.5; box-shadow:0 2px 6px rgba(0,108,73,0.02); display:flex; align-items:flex-start; gap:8px;'>
+                    <span style='color:#006c49; font-weight:700; font-size:14px; line-height:1;'>✓</span>
+                    <div>{clean_adv}</div>
+                </div>
+                """, unsafe_allow_html=True)
 
     with b_col2:
         with st.container(border=True):
-            st.markdown(f"<div style='font-size:12px; font-weight:700; color:#ba1a1a; text-transform:uppercase;'>{T['symptoms_hdr']}</div>", unsafe_allow_html=True)
-            st.markdown("<div style='margin-top:8px;'></div>", unsafe_allow_html=True)
+            st.markdown(f"""
+            <div style='display:flex; align-items:center; gap:8px; margin-bottom:12px; border-bottom:1px solid #ffdad6; padding-bottom:8px;'>
+                <div style='background:#ffdad6; color:#ba1a1a; width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700;'>⚡</div>
+                <div style='font-size:13px; font-weight:700; color:#ba1a1a; letter-spacing:0.04em; text-transform:uppercase;'>{T['symptoms_hdr']}</div>
+            </div>
+            """, unsafe_allow_html=True)
 
-            st.markdown(f"<div style='font-size:11px; font-weight:700; color:#64748b;'>{T['risk_triggers_hdr']}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:6px;'>{T['risk_triggers_hdr']}</div>", unsafe_allow_html=True)
+            
+            trigger_badges_html = ""
             for trg in triggers_list:
-                st.markdown(f"<span style='background:#ffdad6; color:#ba1a1a; padding:2px 8px; border-radius:100px; font-size:11px; font-weight:700; margin-right:4px;'>{trg}</span>", unsafe_allow_html=True)
+                is_normal = trg in ["Биомаркеры в норме", "Optimal Biomarkers"]
+                if is_normal:
+                    bg_color = "#eef6ee"
+                    text_color = "#006c49"
+                    border_color = "#c8e6c9"
+                    icon = "✅ "
+                else:
+                    bg_color = "#ffdad6"
+                    text_color = "#ba1a1a"
+                    border_color = "#ffb4ab"
+                    icon = "⚠️ "
+                trigger_badges_html += f"<span style='background:{bg_color}; color:{text_color}; border:1px solid {border_color}; padding:4px 10px; border-radius:100px; font-size:11px; font-weight:700; margin-right:6px; margin-bottom:6px; display:inline-block;'>{icon}{trg}</span>"
+            
+            st.markdown(f"<div style='margin-bottom:12px;'>{trigger_badges_html}</div>", unsafe_allow_html=True)
 
-            st.markdown(f"<div style='margin-top:10px; font-size:11px; font-weight:700; color:#64748b;'>{T['clinical_symptoms_hdr']}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:6px;'>{T['clinical_symptoms_hdr']}</div>", unsafe_allow_html=True)
             if symptoms_list:
                 for sym in symptoms_list:
-                    st.markdown(f"<div style='font-size:12px; color:#475569; line-height:1.5;'>• {sym}</div>", unsafe_allow_html=True)
+                    st.markdown(f"""
+                    <div style='background:#fff5f5; border:1px solid #ffe3e3; border-radius:8px; padding:8px 12px; margin-bottom:6px; font-size:12px; color:#991b1b; line-height:1.4; display:flex; align-items:center; gap:8px;'>
+                        <span style='color:#dc2626;'>•</span>
+                        <div>{sym}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
             else:
-                st.markdown(f"<div style='font-size:12px; color:#006c49;'>{T['no_symptoms_noted']}</div>", unsafe_allow_html=True)
+                clean_no_sym = T['no_symptoms_noted'].replace("• ", "")
+                st.markdown(f"""
+                <div style='background:#f4fbf4; border:1px solid #eef6ee; border-radius:8px; padding:8px 12px; font-size:12px; color:#006c49; font-weight:600; display:flex; align-items:center; gap:8px;'>
+                    <span>✅</span>
+                    <div>{clean_no_sym}</div>
+                </div>
+                """, unsafe_allow_html=True)
 
     st.markdown("<div style='margin-top:16px;'></div>", unsafe_allow_html=True)
     with st.container(border=True):
@@ -922,22 +975,46 @@ with controls_col:
         risk_diff = (sim_cardiac - p_cardiac) * 100.0
         life_diff = sim_life - p_life
 
+        _sim_cardiac_text = T["sim_cardiac_fmt"].format(before=p_cardiac*100, after=sim_cardiac*100, diff=risk_diff)
+        _sim_life_text = T["sim_life_fmt"].format(before=p_life, after=sim_life, diff=life_diff)
         st.markdown(f"""
         <div style="background-color: #f4fbf4; border: 1px solid #dde4dd; border-radius: 10px; padding: 12px; font-family: 'JetBrains Mono', monospace; margin-top:8px;">
             <div style="font-size: 12px; font-weight: 700; color: #10b981;">
-                Кардио-риск: {p_cardiac*100:.1f}% ➔ {sim_cardiac*100:.1f}% ({risk_diff:+.1f}%)
+                {_sim_cardiac_text}
             </div>
             <div style="font-size: 12px; font-weight: 700; color: #0051d5; margin-top: 4px;">
-                Жизнь: {p_life:.1f} ➔ {sim_life:.1f} ({life_diff:+.1f} лет)
+                {_sim_life_text}
             </div>
         </div>
         """, unsafe_allow_html=True)
 
     with st.container(border=True):
-        st.markdown(f"<div style='font-size:12px; font-weight:700; color:#64748b; text-transform:uppercase;'>Экспорт Клинических Отчётов</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='font-size:12px; font-weight:700; color:#64748b; text-transform:uppercase;'>{T['export_reports_hdr']}</div>", unsafe_allow_html=True)
 
         sex_display = T["sex_male"] if val_sex == 1.0 else T["sex_female"]
         rep_title = "MedAI Longevity Diagnostic Report" if lang_code == "en" else "Клинический диагностический отчёт MedAI Longevity"
+        _report_date = datetime.date.today().strftime("%d.%m.%Y")
+        _lbl_date = "Date" if lang_code == "en" else "Дата"
+        _lbl_method = "Method" if lang_code == "en" else "Метод"
+        _lbl_age = "Age" if lang_code == "en" else "Возраст"
+        _lbl_sex = "Sex" if lang_code == "en" else "Пол"
+        _lbl_bp_r = "BP" if lang_code == "en" else "АД"
+        _lbl_bmi_r = "BMI" if lang_code == "en" else "ИМТ"
+        _lbl_chol_r = "Cholesterol" if lang_code == "en" else "Холестерин"
+        _lbl_glucose_r = "Glucose" if lang_code == "en" else "Глюкоза"
+        _lbl_st_r = "ST Depression" if lang_code == "en" else "ST Депрессия"
+        _lbl_smoking_r = "Smoking" if lang_code == "en" else "Курение"
+        _lbl_smoking_val = ("Yes" if lang_code == "en" else "Да") if val_smoking == 1.0 else ("No" if lang_code == "en" else "Нет")
+        _lbl_section1 = "1. Neural Network Risk Diagnostics (Monte Carlo Dropout)" if lang_code == "en" else "1. Нейросетевая Диагностика Рисков (Monte Carlo Dropout)"
+        _lbl_section2 = "2. Key Triggers & Symptom Analysis" if lang_code == "en" else "2. Ключевые Триггеры и Анализ Симптомов"
+        _lbl_risk_factors = "Identified risk factors" if lang_code == "en" else "Выявленные факторы риска"
+        _lbl_symptoms = "Probable clinical manifestations" if lang_code == "en" else "Вероятные клинические проявления"
+        _lbl_no_symptoms = "No pathological symptoms detected." if lang_code == "en" else "Патологические симптомы отсутствуют."
+        _lbl_section3 = "3. Personalized Longevity Action Plan" if lang_code == "en" else "3. Персонализированный Клинический План Долголетия"
+        _lbl_print = T["print_btn"]
+        _lbl_disclaimer = "Report generated automatically by the MedAI Longevity Suite multi-task neural network. This document is for informational purposes only and does not constitute medical advice." if lang_code == "en" else "Отчёт сформирован автоматически мультизадачной нейросетью MedAI Longevity Suite. Документ носит рекомендательный характер."
+        _bp_unit = "mmHg" if lang_code == "en" else "мм рт.ст."
+        _mm_unit = "mm" if lang_code == "en" else "мм"
 
         report_html = f"""<!DOCTYPE html>
 <html lang="ru">
@@ -963,7 +1040,7 @@ with controls_col:
 </head>
 <body>
     <div style="text-align: center;">
-        <button class="btn-print" onclick="window.print()">Распечатать / Сохранить в PDF</button>
+        <button class="btn-print" onclick="window.print()">{_lbl_print}</button>
     </div>
     <div class="report-card">
         <div class="header">
@@ -972,23 +1049,23 @@ with controls_col:
                 <div style="font-size: 13px; color: #64748b; margin-top: 2px;">Executive Clinical AI Diagnostics</div>
             </div>
             <div class="meta">
-                <div><b>Дата:</b> {st.session_state.get('cur_date', '13.08.2026')}</div>
-                <div><b>Метод:</b> Monte Carlo Dropout (95% CI)</div>
+                <div><b>{_lbl_date}:</b> {_report_date}</div>
+                <div><b>{_lbl_method}:</b> Monte Carlo Dropout (95% CI)</div>
             </div>
         </div>
 
         <div class="patient-box">
-            <div><b>Возраст:</b> {u_age} {T['years']}</div>
-            <div><b>Пол:</b> {sex_display}</div>
-            <div><b>АД:</b> {u_bp} мм рт.ст.</div>
-            <div><b>ИМТ:</b> {u_bmi}</div>
-            <div><b>Холестерин:</b> {u_chol} мг/дл</div>
-            <div><b>Глюкоза:</b> {u_glucose} мг/дл</div>
-            <div><b>ST Депрессия:</b> {u_st_dep} мм</div>
-            <div><b>Курение:</b> {'Да' if val_smoking==1.0 else 'Нет'}</div>
+            <div><b>{_lbl_age}:</b> {u_age} {T['years']}</div>
+            <div><b>{_lbl_sex}:</b> {sex_display}</div>
+            <div><b>{_lbl_bp_r}:</b> {u_bp} {_bp_unit}</div>
+            <div><b>{_lbl_bmi_r}:</b> {u_bmi}</div>
+            <div><b>{_lbl_chol_r}:</b> {u_chol} mg/dL</div>
+            <div><b>{_lbl_glucose_r}:</b> {u_glucose} mg/dL</div>
+            <div><b>{_lbl_st_r}:</b> {u_st_dep} {_mm_unit}</div>
+            <div><b>{_lbl_smoking_r}:</b> {_lbl_smoking_val}</div>
         </div>
 
-        <div class="section-title">1. Нейросетевая Диагностика Рисков (Monte Carlo Dropout)</div>
+        <div class="section-title">{_lbl_section1}</div>
         <div class="metrics-grid">
             <div class="metric-tile">
                 <div class="metric-title">{T['cardiac_risk_hdr']}</div>
@@ -1008,26 +1085,26 @@ with controls_col:
             </div>
         </div>
 
-        <div class="section-title">2. Ключевые Триггеры и Анализ Симптомов</div>
+        <div class="section-title">{_lbl_section2}</div>
         <div style="margin-bottom:12px;">
-            <b>Выявленные факторы риска:</b> {', '.join(triggers_list)}
+            <b>{_lbl_risk_factors}:</b> {', '.join(triggers_list)}
         </div>
         <div class="adv-list">
-            <b>Вероятные клинические проявления:</b>
+            <b>{_lbl_symptoms}:</b>
             <ul>
-                {"".join([f"<li>{s}</li>" for s in symptoms_list]) if symptoms_list else "<li>Патологические симптомы отсутствуют.</li>"}
+                {"".join([f"<li>{s}</li>" for s in symptoms_list]) if symptoms_list else f"<li>{_lbl_no_symptoms}</li>"}
             </ul>
         </div>
 
-        <div class="section-title">3. Персонализированный Клинический План Долголетия</div>
+        <div class="section-title">{_lbl_section3}</div>
         <div class="adv-list">
             <ul>
                 {"".join([f"<li>{a.replace('• ', '')}</li>" for a in advices_list])}
             </ul>
         </div>
 
-        <div style="margin-top: 40px; border-t: 1px solid #e2e8f0; pt: 16px; font-size: 11px; color: #94a3b8; text-align: center;">
-            Отчёт сформирован автоматически мультизадачной нейросетью MedAI Longevity Suite. Документ носит рекомендательный характер.
+        <div style="margin-top: 40px; border-top: 1px solid #e2e8f0; padding-top: 16px; font-size: 11px; color: #94a3b8; text-align: center;">
+            {_lbl_disclaimer}
         </div>
     </div>
 </body>
@@ -1037,8 +1114,8 @@ with controls_col:
         observations = [
             ("cardiac-risk-001", "79423-0", "Cardiovascular disease risk", round(p_cardiac * 100, 2), "%", round(ci_cardiac, 2), "%"),
             ("diabetes-risk-001", "73696-7", "Type-II Diabetes risk", round(p_diabetes * 100, 2), "%", round(ci_diabetes, 2), "%"),
-            ("life-expectancy-001", "39156-5", "Life Expectancy", round(p_life, 1), "years", round(ci_life, 1), "years"),
-            ("vascular-age-001", "39156-5", "Vascular Age", round(p_vascular, 1), "years", round(ci_vascular, 1), "years"),
+            ("life-expectancy-001", "75945-9", "Life Expectancy", round(p_life, 1), "years", round(ci_life, 1), "years"),
+            ("vascular-age-001", "30525-0", "Vascular Age", round(p_vascular, 1), "years", round(ci_vascular, 1), "years"),
         ]
 
         entries = [

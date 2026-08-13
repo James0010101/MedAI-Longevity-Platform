@@ -36,7 +36,9 @@ class MultiTaskNeuralNetwork:
     into 4 task-specific output heads (2 classification, 2 regression).
     """
 
-    def __init__(self, input_dim=10, hidden_sizes=[20, 12], learning_rate=0.02, l2_reg=1e-4, seed=42):
+    def __init__(self, input_dim=10, hidden_sizes=None, learning_rate=0.02, l2_reg=1e-4, seed=42):
+        if hidden_sizes is None:
+            hidden_sizes = [20, 12]
         self.input_dim = input_dim
         self.hidden_sizes = list(hidden_sizes)
         self.act_func = swish
@@ -309,7 +311,7 @@ class MultiTaskNeuralNetwork:
 
     def load_weights(self, filepath):
 
-        data = np.load(filepath, allow_pickle=True)
+        data = np.load(filepath, allow_pickle=False)
         self.input_dim = int(data["input_dim"])
         self.hidden_sizes = list(data["hidden_sizes"])
         self.learning_rate = float(data["learning_rate"])
@@ -340,7 +342,7 @@ class MultiTaskNeuralNetwork:
     @classmethod
     def load_model(cls, filepath):
 
-        data = np.load(filepath, allow_pickle=True)
+        data = np.load(filepath, allow_pickle=False)
         hidden_sizes = list(data["hidden_sizes"])
         lr = float(data["learning_rate"])
         l2 = float(data["l2_reg"])

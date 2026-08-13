@@ -1,5 +1,8 @@
 import os
+import logging
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 # Min-max normalization helper with small epsilon to prevent division by zero
 def normalize(X, mins, maxs):
@@ -25,7 +28,8 @@ def get_medical_dataset(n_samples=500, seed=42, test_ratio=0.2, source="syntheti
             life_expectancy = np.vstack([d_heart["y_life_expectancy"], d_pima["y_life_expectancy"], d_synth["y_life_expectancy"]])
             vascular_age = np.vstack([d_heart["y_vascular_age"], d_pima["y_vascular_age"], d_synth["y_vascular_age"]])
             n_samples = len(raw_X)
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to load fused_master dataset ({e}), falling back to synthetic source.")
             return get_medical_dataset(n_samples=1000, seed=seed, test_ratio=test_ratio, source="synthetic")
 
     elif source == "pima_diabetes":
@@ -55,7 +59,8 @@ def get_medical_dataset(n_samples=500, seed=42, test_ratio=0.2, source="syntheti
             life_expectancy = np.clip(85.0 - 0.07 * (bp - 120) - 0.05 * (glucose - 100) - 3.0 * y_diabetes.ravel(), 58.0, 92.0).reshape(-1, 1)
             vascular_age = np.clip(age + 0.15 * (bp - 120) + 0.06 * (chol - 200), 25.0, 95.0).reshape(-1, 1)
             n_samples = len(raw_X)
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to load pima_diabetes dataset ({e}), falling back to synthetic source.")
             return get_medical_dataset(n_samples=n_samples, seed=seed, test_ratio=test_ratio, source="synthetic")
 
     elif source == "custom_csv" and csv_file is not None:
@@ -80,7 +85,8 @@ def get_medical_dataset(n_samples=500, seed=42, test_ratio=0.2, source="syntheti
             life_expectancy = np.clip(82.0 - 0.08 * (bp - 120) - 0.03 * (chol - 200), 55.0, 95.0).reshape(-1, 1)
             vascular_age = np.clip(age + 0.15 * (bp - 120) + 0.05 * (chol - 200), 20.0, 95.0).reshape(-1, 1)
             n_samples = len(df)
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to load custom_csv dataset ({e}), falling back to synthetic source.")
             return get_medical_dataset(n_samples=n_samples, seed=seed, test_ratio=test_ratio, source="synthetic")
 
     elif source == "openml_heart":
@@ -109,7 +115,8 @@ def get_medical_dataset(n_samples=500, seed=42, test_ratio=0.2, source="syntheti
             life_expectancy = np.clip(82.0 - 0.08 * (bp - 120) - 0.03 * (chol - 200) - 4.0 * y_cardiac.ravel(), 55.0, 92.0).reshape(-1, 1)
             vascular_age = np.clip(age + 0.18 * (bp - 120) + 0.08 * (chol - 200), 25.0, 95.0).reshape(-1, 1)
             n_samples = len(raw_X)
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Failed to load openml_heart dataset ({e}), falling back to synthetic source.")
             return get_medical_dataset(n_samples=n_samples, seed=seed, test_ratio=test_ratio, source="synthetic")
 
     else:
