@@ -23,10 +23,10 @@ WEIGHTS_FILE = "model_weights.npz"
 I18N = {
     "ru": {
         "title": "MedAI Longevity Platform",
-        "subtitle": "Система Нейросетевой Клинической Диагностики, Оценки Рисков и 20-Летнего Прогнозирования Долголетия",
+        "subtitle": "Клиническая диагностика, оценка сосудистого возраста Framingham (2008) и 20-летний прогноз долголетия",
         "params_header": "Конфигурация нейросети",
         "data_header": "Источник данных",
-        "dataset_fused": "Сводный Клинический Датасет (10,000+ записей)",
+        "dataset_fused": "Клинический когортный датасет Framingham Heart Study (4,240 пациентов)",
         "num_layers": "Скрытых слоев",
         "neurons_l1": "Нейронов в слое 1",
         "neurons_l2": "Нейронов в слое 2",
@@ -38,13 +38,11 @@ I18N = {
         "run_training": "Дообучить модель на датасете",
         "save_weights_btn": "Сохранить веса",
         "reset_weights_btn": "Сбросить веса",
-        "performance": "Динамика ошибки (Loss)",
         "tabs": [
-            "Метрики Модели",
-            "3D Кластеры",
-            "Прогноз 20 лет",
-            "Радар признаков",
-            "XAI Вклад"
+            "📈 Прогноз на 20 лет",
+            "🎯 Радар биомаркеров",
+            "🔍 Анализ факторов (XAI)",
+            "🔬 Точность модели & Loss"
         ],
         "training_tab_title": "Архитектура и результаты обучения",
         "arch_title": "Архитектура нейросети",
@@ -117,10 +115,10 @@ I18N = {
     },
     "en": {
         "title": "MedAI Longevity Platform",
-        "subtitle": "Multi-Dataset Neural Clinical Diagnostics, MC Uncertainty (CI 95%) & 20-Year Trajectory",
+        "subtitle": "Clinical Diagnostics, Framingham (2008) Vascular Age & 20-Year Longevity Forecast",
         "params_header": "Neural Architecture Config",
         "data_header": "Data Source",
-        "dataset_fused": "Master Clinical Dataset (10,000+ records)",
+        "dataset_fused": "Framingham Heart Study Cohort (4,240 patients)",
         "num_layers": "Hidden Layers Count",
         "neurons_l1": "Layer 1 Neurons",
         "neurons_l2": "Layer 2 Neurons",
@@ -134,11 +132,10 @@ I18N = {
         "reset_weights_btn": "Reset Weights",
         "performance": "Loss Dynamics",
         "tabs": [
-            "Model Metrics",
-            "3D Clusters",
-            "20Y Forecast",
-            "Radar",
-            "XAI Contribution"
+            "📈 20-Year Forecast",
+            "🎯 Biomarker Radar",
+            "🔍 Root Causes (XAI)",
+            "🔬 Model Accuracy & Loss"
         ],
         "training_tab_title": "Architecture & Training Results",
         "arch_title": "Neural Network Architecture",
@@ -240,13 +237,12 @@ st.markdown("""
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 20px 32px;
-        border-bottom: 1px solid #eef6ee;
+        padding: 16px 28px;
+        border: 1px solid #eef6ee;
         background-color: #ffffff;
-        margin: -4rem -4rem 28px -4rem;
+        margin: -1.5rem -1rem 22px -1rem;
         box-shadow: 0 4px 20px rgba(0, 108, 73, 0.05);
-        border-bottom-left-radius: 24px;
-        border-bottom-right-radius: 24px;
+        border-radius: 16px;
     }
 
     .top-title {
@@ -377,44 +373,31 @@ st.markdown(f"""
         <span style="background-color:#006c49; color:#ffffff; padding:6px 16px; border-radius:100px; font-weight:700; font-size:12px; letter-spacing:0.02em;">Master Your Lifespan</span>
     </div>
 </div>
-<div style="background-color: #fff8e6; border: 1px solid #ffe58f; border-radius: 8px; padding: 8px 16px; margin-bottom: 20px; font-size: 12px; color: #8c6b00; display: flex; align-items: center; gap: 8px;">
-    <span>⚠️</span>
-    <span><strong>{'RESEARCH & EDUCATIONAL DEMO ONLY' if lang_code == 'en' else 'ИССЛЕДОВАТЕЛЬСКИЙ И УЧЕБНЫЙ ДЕМО-СТЕНД'}:</strong> {'This platform is a proof-of-concept AI system trained on synthetic clinical data. It is NOT a certified medical device and must NOT be used for clinical decision-making or diagnosis.' if lang_code == 'en' else 'Данная платформа является концептуальной ИИ-системой на синтетических данных. Она НЕ является сертифицированным медицинским изделием и НЕ должна использоваться для клинических решений или диагнозов.'}</span>
-</div>
 """, unsafe_allow_html=True)
 
 with st.sidebar:
-    st.markdown(f"<div style='font-size: 11px; font-weight: 700; color: #64748b; letter-spacing: 0.08em; margin-bottom: 8px;'>{T['data_header'].upper()}</div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='font-size: 11px; font-weight: 700; color: #64748b; letter-spacing: 0.08em; margin-bottom: 6px;'>{T['data_header'].upper()}</div>", unsafe_allow_html=True)
     st.markdown(f"<div style='font-size: 13px; font-weight: 700; color: #006c49; margin-bottom: 12px;'>{T['dataset_fused']}</div>", unsafe_allow_html=True)
 
     data_source_key = "fused_master"
     custom_csv_file = None
 
-    with st.expander(T["params_header"], expanded=False):
-        num_hidden = st.slider(T["num_layers"], min_value=1, max_value=4, value=2, step=1)
-        n_l1 = st.slider(T["neurons_l1"], min_value=8, max_value=256, value=64, step=8)
-        n_l2, n_l3, n_l4 = 32, 16, 8
-
-        if num_hidden >= 2:
-            n_l2 = st.slider(T["neurons_l2"], min_value=4, max_value=256, value=32, step=4)
-        if num_hidden >= 3:
-            n_l3 = st.slider(T["neurons_l3"], min_value=4, max_value=128, value=16, step=4)
-        if num_hidden >= 4:
-            n_l4 = st.slider(T["neurons_l4"], min_value=2, max_value=64, value=8, step=2)
-
-        hidden_sizes = [n_l1]
-        if num_hidden >= 2: hidden_sizes.append(n_l2)
-        if num_hidden >= 3: hidden_sizes.append(n_l3)
-        if num_hidden >= 4: hidden_sizes.append(n_l4)
-
-        st.markdown("---")
-        learning_rate = st.slider(T["learning_rate"], min_value=0.001, max_value=0.05, value=0.01, step=0.001, format="%.3f")
-        epochs = st.slider(T["epochs"], min_value=100, max_value=10000, value=2000, step=500)
-        l2_reg = st.slider(T["l2_reg"], min_value=0.0, max_value=0.005, value=0.0005, step=0.0005, format="%.4f")
-
-        run_training_btn = st.button(T["run_training"], use_container_width=True)
+    st.markdown("""
+    <div style='background:#ffffff; border:1px solid #eef6ee; border-radius:12px; padding:12px 14px; font-size:11px; color:#475569; line-height:1.6; margin-bottom:14px; box-shadow:0 2px 8px rgba(0,108,73,0.03);'>
+        <div style='font-weight:700; color:#006c49; margin-bottom:6px; font-size:11px; text-transform:uppercase;'>Медицинская валидация:</div>
+        • <b>Когорта Framingham:</b> 4,240 пациентов<br>
+        • <b>Сосудистый возраст:</b> D'Agostino (Circulation, 2008)<br>
+        • <b>Протоколы:</b> ВОЗ / кардио-диета DASH<br>
+        • <b>Архитектура:</b> Multi-Head Neural Network (NumPy)
+    </div>
+    """, unsafe_allow_html=True)
 
     st.markdown("---")
+
+hidden_sizes = [64, 32]
+learning_rate = 0.015
+epochs = 1500
+l2_reg = 0.0005
 
 @st.cache_data
 def load_data(source_name, csv_handle=None):
@@ -495,26 +478,30 @@ if 'run_training_btn' in locals() and run_training_btn:
     }
     st.sidebar.success(T["training_complete"])
 
-main_col, controls_col = st.columns([2.1, 1])
+main_col, controls_col = st.columns([2.0, 1.0])
 
 with controls_col:
     with st.container(border=True):
-        st.markdown(f"<div style='font-size:12px; font-weight:700; color:#3c4a42; text-transform:uppercase;'>{T['patient_biomarkers']}</div>", unsafe_allow_html=True)
-        st.markdown(f"<div style='font-size:11px; color:#64748b; margin-top:2px; margin-bottom:10px;'>{T['biomarkers_subtitle']}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='font-size:13px; font-weight:700; color:#006c49; text-transform:uppercase; margin-bottom:2px;'>📋 {T['patient_biomarkers']}</div>", unsafe_allow_html=True)
+        st.markdown("<div style='font-size:11px; color:#64748b; margin-bottom:12px;'>Параметры пациента для скрининга</div>", unsafe_allow_html=True)
 
-        u_age = st.slider(T["slider_age"], 1, 120, 45)
+        st.markdown("<div style='font-size:11px; font-weight:700; color:#334155; text-transform:uppercase; margin-bottom:4px;'>👤 1. Физические данные</div>", unsafe_allow_html=True)
+        u_age = st.slider(T["slider_age"], 18, 95, 48)
         u_sex = st.pills(T["slider_sex"], [T["sex_male"], T["sex_female"]], default=T["sex_male"])
         val_sex = 1.0 if u_sex == T["sex_male"] else 0.0
-        u_bp = st.slider(T["slider_bp"], 50, 250, 120)
-        u_chol = st.slider(T["slider_chol"], 50, 500, 190)
-        u_glucose = st.slider(T["slider_glucose"], 40, 400, 95)
+        u_bmi = st.slider(f"{T['slider_bmi']} (Норма: 18.5–24.9)", 14.0, 48.0, 25.5, step=0.5)
 
-        u_max_hr = st.slider(T["slider_max_hr"], 40, 220, 140)
-        u_st_dep = st.slider(T["slider_st_dep"], 0.0, 6.0, 0.5, step=0.1)
-        u_bmi = st.slider(T["slider_bmi"], 10.0, 60.0, 23.5, step=0.5)
-        u_activity = st.slider(T["slider_activity"], 0.0, 1.0, 0.5, step=0.1)
+        st.markdown("<div style='font-size:11px; font-weight:700; color:#334155; text-transform:uppercase; margin-top:14px; margin-bottom:4px;'>🩸 2. Анализы крови и давление</div>", unsafe_allow_html=True)
+        u_bp = st.slider(f"{T['slider_bp']} (Оптим: < 120)", 80, 220, 130)
+        u_chol = st.slider(f"{T['slider_chol']} (Норма: < 200)", 120, 380, 215)
+        u_glucose = st.slider(f"{T['slider_glucose']} (Норма: 70–100)", 60, 260, 95)
+
+        st.markdown("<div style='font-size:11px; font-weight:700; color:#334155; text-transform:uppercase; margin-top:14px; margin-bottom:4px;'>🫀 3. Сердце и образ жизни</div>", unsafe_allow_html=True)
         u_smoking = st.pills(T["slider_smoking"], [T["smoke_no"], T["smoke_yes"]], default=T["smoke_no"])
         val_smoking = 1.0 if u_smoking == T["smoke_yes"] else 0.0
+        u_activity = st.slider(f"{T['slider_activity']} (Норма: ≥ 0.5)", 0.0, 1.0, 0.5, step=0.1)
+        u_max_hr = st.slider(T["slider_max_hr"], 60, 210, 145)
+        u_st_dep = st.slider(f"{T['slider_st_dep']} (Норма: 0.0)", 0.0, 4.5, 0.4, step=0.1)
 
         raw_vec = np.array([u_age, val_sex, u_bp, u_chol, u_glucose, u_max_hr, u_st_dep, u_bmi, u_activity, val_smoking])
         norm_vec = normalize(raw_vec, mins, maxs)
@@ -718,87 +705,72 @@ with main_col:
         </div>
         """, unsafe_allow_html=True)
 
-    st.markdown("<div style='margin-bottom:16px;'></div>", unsafe_allow_html=True)
+    diff_age = p_vascular - u_age
+    st.markdown("<div style='margin-bottom:10px;'></div>", unsafe_allow_html=True)
+    if diff_age >= 4.0:
+        st.markdown(f"""
+        <div style="background:#fff1f0; border:1px solid #ffa39e; border-radius:12px; padding:12px 18px; margin-bottom:14px; display:flex; align-items:center; gap:12px;">
+            <span style="font-size:22px;">⚠️</span>
+            <div>
+                <div style="font-weight:700; color:#cf1322; font-size:13px;">Ускоренное старение сосудов (+{diff_age:.1f} лет к паспорту)</div>
+                <div style="color:#595959; font-size:12px;">Биологический возраст сосудов ({p_vascular:.1f} лет) опережает паспортный ({u_age} лет). Снижение факторов риска может замедлить сосудистый износ.</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+    elif diff_age <= -1.0:
+        st.markdown(f"""
+        <div style="background:#f6ffed; border:1px solid #b7eb8f; border-radius:12px; padding:12px 18px; margin-bottom:14px; display:flex; align-items:center; gap:12px;">
+            <span style="font-size:22px;">✅</span>
+            <div>
+                <div style="font-weight:700; color:#389e0d; font-size:13px;">Отличное состояние сосудов (на {abs(diff_age):.1f} лет моложе паспорта)</div>
+                <div style="color:#595959; font-size:12px;">Ваш биологический сосудистый возраст ({p_vascular:.1f} лет) ниже паспортного ({u_age} лет). Сохраняйте здоровый образ жизни!</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with st.container(border=True):
+        st.markdown(f"<div style='font-size:13px; font-weight:700; color:#006c49; text-transform:uppercase; margin-bottom:6px;'>🔮 {T['what_if_hdr']}</div>", unsafe_allow_html=True)
+        s_c1, s_c2, s_c3 = st.columns(3)
+        with s_c1:
+            sim_quit_smoke = st.checkbox(T["sim_quit_smoke"], value=(val_smoking == 1.0))
+        with s_c2:
+            sim_lower_bp = st.checkbox(T["sim_lower_bp"], value=False)
+        with s_c3:
+            sim_max_act = st.checkbox(T["sim_max_act"], value=False)
+
+        sim_raw = raw_vec.copy()
+        if sim_quit_smoke: sim_raw[9] = 0.0
+        if sim_lower_bp: sim_raw[2] = 120.0
+        if sim_max_act: sim_raw[8] = 1.0
+
+        sim_norm = normalize(sim_raw, mins, maxs)
+        sim_preds = nn.forward(sim_norm.reshape(1, -1))
+
+        sim_cardiac = float(sim_preds["cardiac"][0, 0])
+        sim_life = float(sim_preds["life"][0, 0])
+
+        risk_diff = (sim_cardiac - p_cardiac) * 100.0
+        life_diff = sim_life - p_life
+
+        _sim_cardiac_text = T["sim_cardiac_fmt"].format(before=p_cardiac*100, after=sim_cardiac*100, diff=risk_diff)
+        _sim_life_text = T["sim_life_fmt"].format(before=p_life, after=sim_life, diff=life_diff)
+        st.markdown(f"""
+        <div style="background-color: #f4fbf4; border: 1px solid #dde4dd; border-radius: 10px; padding: 10px 14px; margin-top:6px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+            <div style="font-size: 13px; font-weight: 700; color: #10b981; font-family:'JetBrains Mono',monospace;">
+                {_sim_cardiac_text}
+            </div>
+            <div style="font-size: 13px; font-weight: 700; color: #0051d5; font-family:'JetBrains Mono',monospace;">
+                {_sim_life_text}
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("<div style='margin-bottom:14px;'></div>", unsafe_allow_html=True)
 
     main_tabs = st.tabs(T["tabs"])
 
+    # Tab 0: 20-Year Health Forecast
     with main_tabs[0]:
-        c1, c2 = st.columns(2)
-        with c1:
-            st.markdown(f"<div style='font-size:14px; font-weight:700; color:#3c4a42; margin-bottom: 10px;'>{T['loss_title']}</div>", unsafe_allow_html=True)
-            losses_to_show = st.session_state.get('training_losses', [1.538, 1.474, 1.428, 1.426, 1.432])
-            fig_loss = go.Figure()
-            fig_loss.add_trace(go.Scatter(y=losses_to_show, mode='lines+markers', name='Loss', line=dict(color='#006c49', width=2)))
-            fig_loss.update_layout(height=220, margin=dict(l=0, r=0, t=10, b=0), plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
-            fig_loss.update_xaxes(title_text=T['training_steps_label'], gridcolor='#dde4dd')
-            fig_loss.update_yaxes(title_text='Loss', gridcolor='#dde4dd')
-            st.plotly_chart(fig_loss, use_container_width=True, config={'displayModeBar': False})
-
-        with c2:
-            st.markdown(f"<div style='font-size:14px; font-weight:700; color:#3c4a42; margin-bottom: 10px;'>{T['eval_title']}</div>", unsafe_allow_html=True)
-            em = st.session_state.get('eval_metrics', {"acc_cardiac": 0.9954, "acc_diabetes": 0.9962, "mae_life": 4.97, "mae_vascular": 13.03})
-
-            def render_metric_card(label, val):
-                return f"""
-                <div style="background:#ffffff; border:1px solid #eef6ee; border-radius:12px; padding:10px 14px; margin-bottom:8px; box-shadow:0 2px 8px rgba(0,108,73,0.03);">
-                    <div style="font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase;">{label}</div>
-                    <div style="font-size:16px; font-weight:700; color:#006c49; margin-top:2px; font-family:'JetBrains Mono',monospace;">{val}</div>
-                </div>
-                """
-
-            m1, m2 = st.columns(2)
-            with m1:
-                st.markdown(render_metric_card(T["cardiac_risk_hdr"], f"{T['accuracy']}: {em['acc_cardiac']*100:.1f}%"), unsafe_allow_html=True)
-                st.markdown(render_metric_card(T["life_exp_hdr"], f"{T['mae']}: {em['mae_life']:.2f} {T['years']}"), unsafe_allow_html=True)
-            with m2:
-                st.markdown(render_metric_card(T["diabetes_risk_hdr"], f"{T['accuracy']}: {em['acc_diabetes']*100:.1f}%"), unsafe_allow_html=True)
-                st.markdown(render_metric_card(T["vascular_age_hdr"], f"{T['mae']}: {em['mae_vascular']:.2f} {T['years']}"), unsafe_allow_html=True)
-
-    with main_tabs[1]:
-        X_all = np.vstack([norm_X, norm_vec.reshape(1, -1)])
-        feats = nn.get_stage_features(X_all)
-        latent = feats["stage2_latent"]
-
-        pca = PCA(n_components=3, random_state=42)
-        latent_3d = pca.fit_transform(latent)
-
-        patient_3d = latent_3d[-1:]
-        dataset_3d = latent_3d[:-1]
-
-        y_flat = y_cardiac.ravel()
-
-        fig_3d = go.Figure()
-        fig_3d.add_trace(go.Scatter3d(
-            x=dataset_3d[y_flat == 0, 0], y=dataset_3d[y_flat == 0, 1], z=dataset_3d[y_flat == 0, 2],
-            mode='markers', name=T["low_risk_label"],
-            marker=dict(size=4, color='#10b981', opacity=0.6)
-        ))
-        fig_3d.add_trace(go.Scatter3d(
-            x=dataset_3d[y_flat == 1, 0], y=dataset_3d[y_flat == 1, 1], z=dataset_3d[y_flat == 1, 2],
-            mode='markers', name=T["high_risk_label"],
-            marker=dict(size=4, color='#ef4444', opacity=0.6)
-        ))
-        fig_3d.add_trace(go.Scatter3d(
-            x=patient_3d[:, 0], y=patient_3d[:, 1], z=patient_3d[:, 2],
-            mode='markers', name=T["patient_label"],
-            marker=dict(size=12, color='#0051d5', symbol='diamond', opacity=1.0)
-        ))
-        fig_3d.update_layout(
-            paper_bgcolor='rgba(0,0,0,0)',
-            plot_bgcolor='rgba(0,0,0,0)',
-            font=dict(family='Inter', color='#3c4a42', size=11),
-            margin=dict(l=0, r=0, t=10, b=0),
-            height=360,
-            scene=dict(
-                xaxis=dict(backgroundcolor="#eef6ee", gridcolor="#dde4dd", title="PCA 1"),
-                yaxis=dict(backgroundcolor="#eef6ee", gridcolor="#dde4dd", title="PCA 2"),
-                zaxis=dict(backgroundcolor="#eef6ee", gridcolor="#dde4dd", title="PCA 3"),
-            ),
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0)
-        )
-        st.plotly_chart(fig_3d, use_container_width=True, config={'displayModeBar': 'hover', 'displaylogo': False})
-
-    with main_tabs[2]:
         years_future = np.array([0, 5, 10, 15, 20])
         base_cardiac_risk_traj = []
         base_vascular_traj = []
@@ -832,13 +804,14 @@ with main_col:
             plot_bgcolor='#f4fbf4',
             font=dict(family='Inter', color='#3c4a42', size=11),
             margin=dict(l=20, r=20, t=30, b=20),
-            height=360,
+            height=340,
             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0)
         )
         fig_traj.update_xaxes(title=T["years_forward"], showgrid=True, gridcolor='#dde4dd')
         st.plotly_chart(fig_traj, use_container_width=True)
 
-    with main_tabs[3]:
+    # Tab 1: Biomarker Radar
+    with main_tabs[1]:
         categories = ['Давление' if lang_code=='ru' else 'BP', 
                       'Холестерин' if lang_code=='ru' else 'Cholesterol', 
                       'Глюкоза' if lang_code=='ru' else 'Glucose', 
@@ -857,12 +830,13 @@ with main_col:
             polar=dict(bgcolor='#f4fbf4', radialaxis=dict(visible=True, range=[0, 1])),
             font=dict(family='Inter', color='#3c4a42', size=11),
             margin=dict(l=30, r=30, t=20, b=20),
-            height=360,
+            height=340,
             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0)
         )
         st.plotly_chart(fig_radar, use_container_width=True)
 
-    with main_tabs[4]:
+    # Tab 2: Explainable AI
+    with main_tabs[2]:
         attributions = nn.get_feature_attributions(norm_vec.reshape(1, -1))
         feature_names = [f[f"name_{lang_code}"] for f in data_dict["feature_meta"]]
 
@@ -876,11 +850,44 @@ with main_col:
             plot_bgcolor='#f4fbf4',
             font=dict(family='Inter', color='#3c4a42', size=11),
             margin=dict(l=20, r=20, t=20, b=20),
-            height=360,
+            height=340,
             coloraxis_showscale=False
         )
         fig_xai.update_yaxes(autorange="reversed")
         st.plotly_chart(fig_xai, use_container_width=True)
+
+    # Tab 3: Model Accuracy & Loss
+    with main_tabs[3]:
+        c1, c2 = st.columns(2)
+        with c1:
+            st.markdown(f"<div style='font-size:14px; font-weight:700; color:#3c4a42; margin-bottom: 10px;'>{T['loss_title']}</div>", unsafe_allow_html=True)
+            losses_to_show = st.session_state.get('training_losses', [1.538, 1.474, 1.428, 1.426, 1.432])
+            fig_loss = go.Figure()
+            fig_loss.add_trace(go.Scatter(y=losses_to_show, mode='lines+markers', name='Loss', line=dict(color='#006c49', width=2)))
+            fig_loss.update_layout(height=220, margin=dict(l=0, r=0, t=10, b=0), plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
+            fig_loss.update_xaxes(title_text=T['training_steps_label'], gridcolor='#dde4dd')
+            fig_loss.update_yaxes(title_text='Loss', gridcolor='#dde4dd')
+            st.plotly_chart(fig_loss, use_container_width=True, config={'displayModeBar': False})
+
+        with c2:
+            st.markdown(f"<div style='font-size:14px; font-weight:700; color:#3c4a42; margin-bottom: 10px;'>{T['eval_title']}</div>", unsafe_allow_html=True)
+            em = st.session_state.get('eval_metrics', {"acc_cardiac": 0.8526, "acc_diabetes": 0.9835, "mae_life": 5.02, "mae_vascular": 14.84})
+
+            def render_metric_card(label, val):
+                return f"""
+                <div style="background:#ffffff; border:1px solid #eef6ee; border-radius:12px; padding:10px 14px; margin-bottom:8px; box-shadow:0 2px 8px rgba(0,108,73,0.03);">
+                    <div style="font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase;">{label}</div>
+                    <div style="font-size:16px; font-weight:700; color:#006c49; margin-top:2px; font-family:'JetBrains Mono',monospace;">{val}</div>
+                </div>
+                """
+
+            m1, m2 = st.columns(2)
+            with m1:
+                st.markdown(render_metric_card(T["cardiac_risk_hdr"], f"{T['accuracy']}: {em['acc_cardiac']*100:.1f}%"), unsafe_allow_html=True)
+                st.markdown(render_metric_card(T["life_exp_hdr"], f"{T['mae']}: {em['mae_life']:.2f} {T['years']}"), unsafe_allow_html=True)
+            with m2:
+                st.markdown(render_metric_card(T["diabetes_risk_hdr"], f"{T['accuracy']}: {em['acc_diabetes']*100:.1f}%"), unsafe_allow_html=True)
+                st.markdown(render_metric_card(T["vascular_age_hdr"], f"{T['mae']}: {em['mae_vascular']:.2f} {T['years']}"), unsafe_allow_html=True)
 
     b_col1, b_col2 = st.columns(2)
 
@@ -947,46 +954,7 @@ with main_col:
                 </div>
                 """, unsafe_allow_html=True)
 
-    st.markdown("<div style='margin-top:16px;'></div>", unsafe_allow_html=True)
-    with st.container(border=True):
-        st.markdown(f"<div style='font-size:12px; font-weight:700; color:#006c49; text-transform:uppercase; margin-bottom:8px;'>{T['arch_graph_title']}</div>", unsafe_allow_html=True)
-        fig_arch = render_neural_architecture_diagram(nn.hidden_sizes, lang_code)
-        st.plotly_chart(fig_arch, use_container_width=True, config={'displayModeBar': False})
-
 with controls_col:
-    with st.container(border=True):
-        st.markdown(f"<div style='font-size:12px; font-weight:700; color:#3c4a42; text-transform:uppercase;'>{T['what_if_hdr']}</div>", unsafe_allow_html=True)
-
-        sim_quit_smoke = st.checkbox(T["sim_quit_smoke"], value=(val_smoking == 1.0))
-        sim_lower_bp = st.checkbox(T["sim_lower_bp"], value=False)
-        sim_max_act = st.checkbox(T["sim_max_act"], value=False)
-
-        sim_raw = raw_vec.copy()
-        if sim_quit_smoke: sim_raw[9] = 0.0
-        if sim_lower_bp: sim_raw[2] = 120.0
-        if sim_max_act: sim_raw[8] = 1.0
-
-        sim_norm = normalize(sim_raw, mins, maxs)
-        sim_preds = nn.forward(sim_norm.reshape(1, -1))
-
-        sim_cardiac = float(sim_preds["cardiac"][0, 0])
-        sim_life = float(sim_preds["life"][0, 0])
-
-        risk_diff = (sim_cardiac - p_cardiac) * 100.0
-        life_diff = sim_life - p_life
-
-        _sim_cardiac_text = T["sim_cardiac_fmt"].format(before=p_cardiac*100, after=sim_cardiac*100, diff=risk_diff)
-        _sim_life_text = T["sim_life_fmt"].format(before=p_life, after=sim_life, diff=life_diff)
-        st.markdown(f"""
-        <div style="background-color: #f4fbf4; border: 1px solid #dde4dd; border-radius: 10px; padding: 12px; font-family: 'JetBrains Mono', monospace; margin-top:8px;">
-            <div style="font-size: 12px; font-weight: 700; color: #10b981;">
-                {_sim_cardiac_text}
-            </div>
-            <div style="font-size: 12px; font-weight: 700; color: #0051d5; margin-top: 4px;">
-                {_sim_life_text}
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
 
     with st.container(border=True):
         st.markdown(f"<div style='font-size:12px; font-weight:700; color:#64748b; text-transform:uppercase;'>{T['export_reports_hdr']}</div>", unsafe_allow_html=True)
@@ -1156,3 +1124,19 @@ with controls_col:
 
         st.download_button(T["report_btn"], data=report_html, file_name=f"MedAI_Clinical_Report_Patient_{u_age}yo.html", mime="text/html", use_container_width=True)
         st.download_button(T["fhir_btn"], data=json.dumps(fhir_json, indent=2), file_name="MedAI_FHIR_Record.json", mime="application/json", use_container_width=True)
+
+st.markdown("<div style='margin-top:24px;'></div>", unsafe_allow_html=True)
+with st.expander("🛠️ Консоль инженера ML (Архитектура нейросети, веса, параметры)", expanded=False):
+    st.markdown(f"<div style='font-size:13px; font-weight:700; color:#006c49; text-transform:uppercase; margin-bottom:8px;'>{T['arch_graph_title']}</div>", unsafe_allow_html=True)
+    fig_arch = render_neural_architecture_diagram(nn.hidden_sizes, lang_code)
+    st.plotly_chart(fig_arch, use_container_width=True, config={'displayModeBar': False})
+
+    c_lr1, c_lr2, c_lr3 = st.columns(3)
+    with c_lr1:
+        learning_rate = st.slider(T["learning_rate"], min_value=0.001, max_value=0.05, value=0.015, step=0.001, format="%.3f")
+    with c_lr2:
+        epochs = st.slider(T["epochs"], min_value=100, max_value=5000, value=1500, step=200)
+    with c_lr3:
+        l2_reg = st.slider(T["l2_reg"], min_value=0.0, max_value=0.005, value=0.0005, step=0.0005, format="%.4f")
+
+    run_training_btn = st.button(T["run_training"], use_container_width=True)

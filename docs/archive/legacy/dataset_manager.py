@@ -8,6 +8,55 @@ logger = logging.getLogger(__name__)
 def normalize(X, mins, maxs):
     return (X - mins) / (maxs - mins + 1e-8)
 
+def calculate_framingham_vascular_age(age, sex, bp, chol, smoking, diabetes):
+    """
+    Computes Vascular Age using the official Framingham Heart Study 
+    multivariable risk equations (D'Agostino et al., Circulation 2008).
+    Analytical closed-form solution.
+    """
+    age = np.clip(np.asarray(age, dtype=float), 20.0, 95.0)
+    sex = np.asarray(sex, dtype=float)  # 1 = male, 0 = female
+    bp = np.clip(np.asarray(bp, dtype=float), 80.0, 240.0)
+    chol = np.clip(np.asarray(chol, dtype=float), 100.0, 450.0)
+    smoking = np.asarray(smoking, dtype=float)
+    diabetes = np.asarray(diabetes, dtype=float)
+
+    is_male = (sex >= 0.5)
+    hdl_m, hdl_f = 50.0, 60.0
+
+    ln_age = np.log(age)
+    ln_chol = np.log(chol)
+    ln_sbp = np.log(bp)
+
+    # Men (D'Agostino 2008)
+    sum_beta_m = ln_age * 3.06117 + ln_chol * 1.1237 - np.log(hdl_m) * 0.93263 + ln_sbp * 1.93303 + smoking * 0.65451 + diabetes * 0.57367
+    opt_const_m = np.log(180.0) * 1.1237 - np.log(50.0) * 0.93263 + np.log(125.0) * 1.93303
+    vasc_age_m = np.exp((sum_beta_m - opt_const_m) / 3.06117)
+
+    # Women (D'Agostino 2008)
+    sum_beta_f = ln_age * 2.32888 + ln_chol * 1.20904 - np.log(hdl_f) * 0.70833 + ln_sbp * 2.82263 + smoking * 0.52873 + diabetes * 0.69154
+    opt_const_f = np.log(180.0) * 1.20904 - np.log(60.0) * 0.70833 + np.log(125.0) * 2.82263
+    vasc_age_f = np.exp((sum_beta_f - opt_const_f) / 2.32888)
+
+    vasc_age = np.where(is_male, vasc_age_m, vasc_age_f)
+    return np.clip(vasc_age, 20.0, 95.0)
+
+
+def calculate_actuarial_life_expectancy(age, sex, vascular_age, smoking, diabetes):
+    """
+    Computes estimated life expectancy based on WHO/CDC baseline longevity tables
+    adjusted for vascular acceleration, tobacco hazard, and diabetes status.
+    """
+    age = np.asarray(age, dtype=float)
+    sex = np.asarray(sex, dtype=float)
+    base_life = np.where(sex >= 0.5, 79.0, 83.0)
+
+    vasc_delta = vascular_age - age
+    life_exp = base_life - 0.40 * np.maximum(0, vasc_delta) + 0.15 * np.maximum(0, -vasc_delta)
+    life_exp = life_exp - 3.5 * smoking - 3.0 * diabetes
+    return np.clip(life_exp, np.maximum(55.0, age + 2.0), 96.0)
+
+
 def get_medical_dataset(n_samples=500, seed=42, test_ratio=0.2, source="synthetic", csv_file=None):
     rng = np.random.default_rng(seed)
 
@@ -15,18 +64,53 @@ def get_medical_dataset(n_samples=500, seed=42, test_ratio=0.2, source="syntheti
     mins = np.array([1.0, 0.0, 50.0, 50.0, 40.0, 40.0, 0.0, 10.0, 0.0, 0.0])
     maxs = np.array([120.0, 1.0, 250.0, 500.0, 400.0, 220.0, 6.0, 60.0, 1.0, 1.0])
 
-    if source == "fused_master":
-        # Fuse real clinical data (OpenML Heart & Pima Diabetes) with synthetic cohort
-        try:
-            d_heart = get_medical_dataset(n_samples=500, seed=seed, source="openml_heart")
-            d_pima = get_medical_dataset(n_samples=500, seed=seed+1, source="pima_diabetes")
-            d_synth = get_medical_dataset(n_samples=500, seed=seed+2, source="synthetic")
+    if source == "framingham":
+        csv_path = os.path.join(os.path.dirname(__file__), "framingham.csv")
+        if not os.path.exists(csv_path):
+            logger.warning("framingham.csv not found locally, falling back to synthetic.")
+            return get_medical_dataset(n_samples=n_samples, seed=seed, test_ratio=test_ratio, source="synthetic")
 
-            raw_X = np.vstack([d_heart["raw_X"], d_pima["raw_X"], d_synth["raw_X"]])
-            y_cardiac = np.vstack([d_heart["y_cardiac"], d_pima["y_cardiac"], d_synth["y_cardiac"]])
-            y_diabetes = np.vstack([d_heart["y_diabetes"], d_pima["y_diabetes"], d_synth["y_diabetes"]])
-            life_expectancy = np.vstack([d_heart["y_life_expectancy"], d_pima["y_life_expectancy"], d_synth["y_life_expectancy"]])
-            vascular_age = np.vstack([d_heart["y_vascular_age"], d_pima["y_vascular_age"], d_synth["y_vascular_age"]])
+        try:
+            import pandas as pd
+            df = pd.read_csv(csv_path)
+            for col in ['totChol', 'glucose', 'BMI', 'heartRate', 'cigsPerDay', 'BPMeds']:
+                if col in df.columns:
+                    df[col] = df[col].fillna(df[col].median())
+
+            age = df['age'].values.astype(float)
+            sex = df['male'].values.astype(float)
+            bp = df['sysBP'].values.astype(float)
+            chol = df['totChol'].values.astype(float)
+            glucose = df['glucose'].values.astype(float)
+            heart_rate = df['heartRate'].values.astype(float)
+            max_hr = np.clip(208.0 - 0.7 * age + 0.15 * (heart_rate - 72.0), 60.0, 220.0)
+            st_dep = np.where(df['prevalentHyp'].values == 1, 1.2, 0.2) + np.where(df['prevalentStroke'].values == 1, 1.0, 0.0)
+            bmi = df['BMI'].values.astype(float)
+            activity = np.clip(0.7 - 0.008 * (bmi - 24.0) - 0.1 * df['prevalentHyp'].values, 0.1, 1.0)
+            smoking = df['currentSmoker'].values.astype(float)
+
+            raw_X = np.column_stack([age, sex, bp, chol, glucose, max_hr, st_dep, bmi, activity, smoking])
+            y_cardiac = df['TenYearCHD'].values.astype(float).reshape(-1, 1)
+            y_diabetes = df['diabetes'].values.astype(float).reshape(-1, 1)
+
+            vasc_age = calculate_framingham_vascular_age(age, sex, bp, chol, smoking, y_diabetes.ravel())
+            vascular_age = vasc_age.reshape(-1, 1)
+
+            life_exp = calculate_actuarial_life_expectancy(age, sex, vasc_age, smoking, y_diabetes.ravel())
+            life_expectancy = life_exp.reshape(-1, 1)
+            n_samples = len(raw_X)
+        except Exception as e:
+            logger.warning(f"Failed to process framingham dataset ({e}), falling back to synthetic.")
+            return get_medical_dataset(n_samples=n_samples, seed=seed, test_ratio=test_ratio, source="synthetic")
+
+    elif source == "fused_master":
+        try:
+            d_framingham = get_medical_dataset(source="framingham")
+            raw_X = d_framingham["raw_X"]
+            y_cardiac = d_framingham["y_cardiac"]
+            y_diabetes = d_framingham["y_diabetes"]
+            life_expectancy = d_framingham["y_life_expectancy"]
+            vascular_age = d_framingham["y_vascular_age"]
             n_samples = len(raw_X)
         except Exception as e:
             logger.warning(f"Failed to load fused_master dataset ({e}), falling back to synthetic source.")
@@ -159,31 +243,8 @@ def get_medical_dataset(n_samples=500, seed=42, test_ratio=0.2, source="syntheti
         prob_diabetes = 1 / (1 + np.exp(-diabetes_score))
         y_diabetes = (prob_diabetes > 0.5).astype(float).reshape(-1, 1)
 
-        base_life = 82.0 + 3.0 * (1 - sex)
-        life_expectancy = (
-            base_life -
-            0.08 * (bp - 120) -
-            0.03 * (chol - 200) -
-            0.06 * (glucose - 100) -
-            1.80 * st_dep -
-            0.25 * (bmi - 25) +
-            3.5 * activity -
-            6.5 * smoking -
-            4.0 * y_cardiac.ravel() -
-            3.0 * y_diabetes.ravel()
-        )
-        life_expectancy = np.clip(life_expectancy, 58.0, 92.0).reshape(-1, 1)
-
-        vascular_age = (
-            age +
-            0.18 * (bp - 120) +
-            0.08 * (chol - 200) +
-            2.5 * st_dep +
-            0.35 * (bmi - 25) -
-            4.0 * activity +
-            5.5 * smoking
-        )
-        vascular_age = np.clip(vascular_age, 25.0, 95.0).reshape(-1, 1)
+        vascular_age = calculate_framingham_vascular_age(age, sex, bp, chol, smoking, y_diabetes.ravel()).reshape(-1, 1)
+        life_expectancy = calculate_actuarial_life_expectancy(age, sex, vascular_age.ravel(), smoking, y_diabetes.ravel()).reshape(-1, 1)
 
         raw_X = np.column_stack([age, sex, bp, chol, glucose, max_hr, st_dep, bmi, activity, smoking])
 

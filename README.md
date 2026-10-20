@@ -1,67 +1,146 @@
-# MedAI Longevity — Multi-Task Neural Network Playground
+# MedAI Longevity Platform 🫀
 
+[![Python 3.12](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/)
+[![Streamlit 1.61](https://img.shields.io/badge/Streamlit-1.61-FF4B4B.svg)](https://streamlit.io/)
+[![NumPy 2.4](https://img.shields.io/badge/NumPy-2.4-013243.svg)](https://numpy.org/)
+[![Tests Passing](https://img.shields.io/badge/Tests-38%20Passed-006c49.svg)](tests/)
+[![Languages](https://img.shields.io/badge/Languages-RU%20%7C%20UZ%20%7C%20EN-blueviolet.svg)](i18n/)
+[![FHIR R4](https://img.shields.io/badge/Interoperability-HL7%20FHIR%20R4-orange.svg)](core/report.py)
 
-## Overview
+**MedAI Longevity Platform** — открытая цифровая веб-платформа для раннего скрининга сердечно-сосудистого риска, оценки сосудистого возраста и персонализированного продления активной жизни в Республике Узбекистан.
 
-MedAI Longevity is an interactive Streamlit application that demonstrates a **multi-task neural network** built from scratch in pure NumPy. The network processes 10 clinical biomarkers through shared hidden layers and simultaneously predicts 4 clinical targets:
+Проект разработан в рамках конкурса социально полезных студенческих инновационных стартапов при Агентстве по образованию / Министерстве высшего образования, науки и инноваций Республики Узбекистан.
 
-1. **Cardiac Disease Risk** (binary classification)
-2. **Type-II Diabetes Risk** (binary classification)
-3. **Life Expectancy** (regression, years)
-4. **Biological Vascular Age** (regression, years)
+---
 
-## Key Features
+## 📸 Сравнение интерфейса: «До» и «После»
 
-- 🧠 **Pure NumPy neural network** — forward/backward pass, Adam optimizer, He/Xavier init, 5 activation functions
-- 🎯 **Multi-head architecture** — shared latent representation → 4 task-specific output heads
-- 🔍 **Explainable AI (XAI)** — per-biomarker gradient sensitivity attributions
-- 🔮 **"What-If" Simulator** — toggle lifestyle interventions and see predicted outcomes change in real time
-- 📊 **3D PCA visualization** — latent feature space clustering
-- 📋 **AI Clinical Recommendations** — rule-based personalized clinical suggestions
-- 📥 **HTML Report Generator** — downloadable diagnostic report
-- 🌐 **Bilingual UI** — full Russian/English internationalization
-- 📈 **Train/Test split** — 80/20 hold-out evaluation to show real generalization metrics
+| До модернизации (Устаревший прототип) | После модернизации (Текущая версия 2.0) |
+|:---:|:---:|
+| ![До модернизации](docs/screenshots/before.png) | ![После модернизации](docs/screenshots/after_1920.png) |
+| *Смешанный язык, захардкоженные константы сосудистого возраста, отсутствие связи ИИ с рекомендациями, перегруженный вид* | *Чистый строгий дизайн, честные доверительные интервалы, аналитическая формула D'Agostino, таблицы ВОЗ для РУз, узбекский язык* |
 
-## Installation
+---
 
+## 🎯 Ключевые возможности и архитектура
+
+```mermaid
+flowchart LR
+    U["Ввод данных пациента<br/>(ммоль/л или мг/дл)"] --> V["Валидация и перевод<br/>в вектор признаков"]
+    V --> NN["Многозадачная нейросеть<br/>(Pure NumPy MultiTask MLP)"]
+    V --> F["Формула D'Agostino 2008<br/>(Circulation 2008)"]
+    F --> W["Таблицы ВОЗ (Узбекистан 2023)<br/>(Оценка продолжительности жизни)"]
+    NN --> XAI["Integrated Gradients (XAI)<br/>(Анализ вклада каждого фактора)"]
+    V --> R["Пороги доказательной медицины<br/>(ESC/ESH 2018, WHO, NCEP)"]
+    R --> S["Виртуальная симуляция шагов<br/>(Расчёт снижения риска нейросетью)"]
+    NN --> S
+    S --> TOP["ТОП-3 приоритетных шага<br/>по снижению риска"]
+```
+
+1. **10-летний риск ИБС (Нейросеть):** Обучена на исходах реальной когорты Framingham Heart Study с расчетом эпистемической неопределенности через Monte Carlo Dropout ($\pm\sigma$).
+2. **Скрининг сахарного диабета (Нейросеть):** Вторая классификационная голова выявляет вероятность текущего недиагностированного диабета / предиабета (ROC-AUC **0.884**).
+3. **Сердечно-сосудистый возраст (Формула):** Точная аналитическая замкнутая формула по модели D'Agostino et al. (*Circulation* 2008). Устранена критическая ошибка старого кода со «схлопыванием» в константу.
+4. **Оценка продолжительности жизни (Таблицы ВОЗ для Узбекистана):** Интеграция официальной демографической сетки ВОЗ (2023) с сосудистой поправкой.
+5. **Объяснимый ИИ (Integrated Gradients):** Вклад каждого фактора рассчитывается в процентных пунктах относительно эталонного здорового человека того же возраста и пола.
+6. **Персонализированные рекомендации:** Клинические рекомендации ВОЗ/ESC соединены с симуляцией нейросетью: шаги ранжируются по величине снижения риска (например: «Отказ от курения снизит риск на 4.2 п.п. и омолодит сердце на 5.1 лет»).
+7. **Интероперабельность:** Экспорт печатного отчёта в HTML/PDF и пакета в международном стандарте **HL7 FHIR R4** с верифицированными кодами LOINC.
+8. **Триязычность:** Русский (`ru`), Узбекский на латинице (`uz`) и Английский (`en`) со 100% паритетом ключей.
+9. **Конвертер единиц:** Поддержка лабораторного стандарта Узбекистана и СНГ (**ммоль/л**) и международного (**мг/дл**).
+
+---
+
+## 📊 Честные аудированные метрики качества (Тестовая выборка $N=636$)
+
+Каждое число получено автоматическим скриптом валидации без захардкоженных констант:
+
+| Целевая задача | Модель MedAI (Нейросеть) | Базовый LogReg | Референс D'Agostino 2008 | Brier Score |
+|:---|:---:|:---:|:---:|:---:|
+| **10-летний риск ИБС (CHD)** | **0.675** [0.607, 0.735] | 0.698 [0.638, 0.758] | 0.700 [0.641, 0.760] | **0.1210** |
+| **Скрининг диабета** | **0.884** [0.738, 0.998] | 0.827 | — | **0.0242** |
+
+### Операционные характеристики при порогах 10-летнего риска:
+- **Порог 10% (Промежуточный риск):** Чувствительность = **75.26%**, Специфичность = **53.62%**
+- **Порог 20% (Высокий клинический риск):** Чувствительность = **40.21%**, Специфичность = **82.56%**
+
+---
+
+## 🚀 Быстрый запуск
+
+### 1. Клонирование и установка зависимостей
 ```bash
+git clone https://github.com/James0010101/Very-good-project.git
+cd "MedAI Longevity Platform"
+
+python -m venv venv
+# Windows:
+.\venv\Scripts\activate
+# Linux/macOS:
+source venv/bin/activate
+
 pip install -r requirements.txt
 ```
 
-## Running
+### 2. Запуск веб-приложения
+```bash
+streamlit run streamlit_app.py
+```
+Приложение откроется в браузере по адресу `http://localhost:8501`.
+
+---
+
+## 🔬 Воспроизведение полного цикла ML
+
+Любой исследователь или эксперт комиссии может воспроизвести обучение и валидацию «с нуля» за 3 команды:
 
 ```bash
-streamlit run app.py
+# 1. Подготовка данных и стратифицированное разбиение 70/15/15
+python scripts/prepare_data.py
+
+# 2. Загрузка официальных таблиц смертности ВОЗ для Узбекистана
+python scripts/fetch_who_life_table.py
+
+# 3. Обучение нейросети, расчет ROC-AUC с ДИ и сохранение метрик
+python scripts/train_model.py
+
+# 4. Запуск полного набора из 38 автоматических тестов
+pytest -q
 ```
 
-## Project Structure
+---
+
+## 📁 Структура репозитория
 
 ```
-├── app.py                 # Streamlit UI (entry point)
-├── neural_network.py      # Multi-task neural network (pure NumPy)
-├── dataset_manager.py     # Synthetic clinical dataset generator
-├── test_neural_network.py # Automated tests
-├── requirements.txt       # Pinned dependencies
-├── .streamlit/config.toml # Streamlit executive light theme configuration
-└── README.md              # This file
+MedAI Longevity Platform/
+├── streamlit_app.py            # Главная точка входа: конфигурация, i18n, st.navigation
+├── app_pages/
+│   ├── screening.py            # Основной экран: форма, метрики, ТОП-3 шага, XAI, экспорт
+│   ├── methodology.py          # Страница «Методология»: реальный Loss, ROC-AUC, калибровка
+│   └── about.py                # Страница «О проекте»: актуальность для РУз, дорожная карта
+├── core/
+│   ├── clinical.py             # D'Agostino 2008, Heart Age, таблицы ВОЗ Узбекистана
+│   ├── config.py               # Константы, пути, диапазоны признаков
+│   ├── i18n.py                 # Движок интернационализации (RU, UZ, EN)
+│   ├── recommendations.py      # Клинические правила + нейросетевая симуляция дельт
+│   ├── report.py               # Генерация HTML-отчета и пакета HL7 FHIR R4
+│   ├── risk_model.py           # Загрузка весов, инференс, Integrated Gradients, симуляции
+│   ├── thresholds.py           # Пороги клинических рекомендаций (ESC, WHO, NCEP)
+│   └── units.py                # Двунаправленная конвертация ммоль/л ⇄ мг/дл
+├── neural_network.py           # Чистая NumPy-реализация MultiTask MLP (Swish, Dropout, Adam, IG)
+├── scripts/
+│   ├── prepare_data.py         # Предобработка Framingham и стратифицированный сплит
+│   ├── fetch_who_life_table.py # Загрузка и расчет таблиц смертности ВОЗ РУз
+│   └── train_model.py          # Скрипт обучения модели и генерации metrics.json
+├── data/                       # Данные (Framingham, таблицы ВОЗ)
+├── models/                     # Артефакты (model_weights.npz, metrics.json, model_card.json)
+├── i18n/                       # Словари локализации (ru.json, uz.json, en.json)
+├── tests/                      # 38 автоматических тестов (клиника, ML, XAI, UI smoke)
+├── docs/                       # Документация (PROGRESS, MODEL_CARD, LIMITATIONS, DEMO_SCRIPT)
+└── requirements.txt            # Совместимые зависимости
 ```
 
-## Dataset
+---
 
-The synthetic dataset is generated based on epidemiological risk models inspired by:
-- **Framingham Heart Study** cardiovascular risk factors
-- **NHANES** metabolic and anthropometric distributions
-- **WHO** mortality statistics
+## ⚖️ Медицинское и правовое уведомление
 
-**10 Input Biomarkers:** Age, Sex, Resting BP, Cholesterol, Fasting Glucose, Max Heart Rate, ST Depression, BMI, Physical Activity, Smoking Status.
-
-## Technical Details
-
-- **Optimizer:** Adam (β₁=0.9, β₂=0.999)
-- **Loss:** Weighted multi-task loss (BCE for classification heads, MSE for regression heads)
-- **Regularization:** L2 weight decay, gradient clipping
-- **Initialization:** He (ReLU family), Xavier (others)
-
-## License
-
-Educational project. Use at your own risk.
+Платформа **MedAI Longevity Platform** является научно-образовательным и исследовательским прототипом. Она предназначена для первичной стратификации рисков, просвещения граждан и поддержки принятия решений, но **не заменяет очную консультацию врача**, не ставит окончательный клинический диагноз и не назначает медикаментозное лечение.
