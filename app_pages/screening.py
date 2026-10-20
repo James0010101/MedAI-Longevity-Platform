@@ -14,7 +14,9 @@ from core.risk_model import (
     compute_risk_trajectory,
     explain_prediction,
     predict_patient,
+    simulate_intervention,
 )
+from core.thresholds import classify
 from core.units import from_mgdl, to_mgdl
 
 lang = get_current_language()
@@ -217,6 +219,17 @@ with st.container(border=True):
         )
         cur_p["BMI"] = float(bmi_val)
 
+        with st.expander(t("calc_bmi_expander")):
+            h_c, w_c = st.columns(2)
+            h_in = h_c.number_input("Рост (см)", min_value=120, max_value=220, value=172, step=1)
+            w_in = w_c.number_input("Вес (кг)", min_value=35.0, max_value=180.0, value=75.0, step=0.5)
+            c_bmi = round(w_in / ((h_in / 100.0) ** 2), 1)
+            st.caption(f"Рассчитанный ИМТ: **{c_bmi}** кг/м²")
+            if st.button(t("calc_bmi_btn"), key="btn_apply_bmi", width="stretch"):
+                cur_p["BMI"] = float(c_bmi)
+                st.session_state["patient_data"] = cur_p
+                st.rerun()
+
     with col_vit4:
         hr_val = st.slider(
             t("field_heart_rate"),
@@ -365,6 +378,49 @@ with c_m4:
         )
         st.caption(t("card_dm_sub"))
 
+# Clinical Verdict Banner
+xai_quick = explain_prediction(cur_p, head="chd", m_steps=20)
+attrs_sorted = sorted(xai_quick["attributions_pp"].items(), key=lambda x: x[1], reverse=True)
+top_driver_key = attrs_sorted[0][0]
+top_driver_val = attrs_sorted[0][1]
+
+feat_names_ru = {
+    "sysBP": "повышенное систолическое артериальное давление",
+    "currentSmoker": "табакокурение",
+    "cigsPerDay": "интенсивность курения табака",
+    "totChol": "гиперхолестеринемия (высокий уровень холестерина)",
+    "glucose": "повышенный уровень глюкозы крови",
+    "BMI": "избыточная масса тела / ожирение",
+    "diaBP": "повышенное диастолическое давление",
+    "prevalentHyp": "артериальная гипертензия",
+    "age": "возрастной фактор",
+    "male": "биологический мужской пол",
+    "heartRate": "тахикардия покоя",
+    "prevalentStroke": "сосудистое событие в анамнезе",
+    "BPMeds": "недостаточный контроль давления на терапии",
+}
+top_driver_desc = feat_names_ru.get(top_driver_key, top_driver_key)
+
+with st.container(border=True):
+    v_icon = "🟢" if p_chd < 10.0 else ("🟠" if p_chd < 20.0 else "🔴")
+    st.markdown(f"#### {v_icon} {t('verdict_title')}")
+    if p_chd < 10.0:
+        verdict_msg = (
+            f"У пациента регистрируется **{badge_cat.lower()}** ({p_chd:.1f}% за 10 лет). "
+            f"Биологический сердечно-сосудистый возраст составляет **{heart_age:.1f} лет** "
+            f"({'+' if ha_delta > 0 else ''}{ha_delta:.1f} к паспортному возрасту). "
+            f"Оценка ожидаемой продолжительности жизни: **{life_exp:.1f} лет**."
+        )
+    else:
+        verdict_msg = (
+            f"У пациента регистрируется **{badge_cat.lower()}** ({p_chd:.1f}% за 10 лет). "
+            f"Биологический сердечно-сосудистый возраст составляет **{heart_age:.1f} лет** "
+            f"({'+' if ha_delta > 0 else ''}{ha_delta:.1f} к паспортному возрасту). "
+            f"Ведущим управляемым фактором риска по оценке ИИ является **{top_driver_desc}** "
+            f"(индивидуальный вклад: +{top_driver_val:.1f} процентных пунктов)."
+        )
+    st.write(verdict_msg)
+
 st.divider()
 
 # Priority Action Steps (TOP-3)
@@ -411,16 +467,107 @@ else:
 st.divider()
 
 # Deep-Dive Analytics Tabs
-tab1, tab2, tab3 = st.tabs([t("tab_xai"), t("tab_trajectory"), t("tab_export")])
+tab_sim, tab_xai, tab_bio, tab_traj, tab_exp = st.tabs([
+    f"🎯 {t('tab_what_if')}",
+    f"📊 {t('tab_xai')}",
+    f"📋 {t('tab_biomarkers')}",
+    f"📈 {t('tab_trajectory')}",
+    f"📄 {t('tab_export')}",
+])
 
-with tab1:
+with tab_sim:
+    st.subheader(t("what_if_heading"))
+    st.caption(t("what_if_desc"))
+
+    st.markdown("##### Отметьте планируемые вмешательства для мгновенной симуляции:")
+    col_c1, col_c2, col_c3 = st.columns(3)
+
+    sim_changes = {}
+    with col_c1:
+        if cur_p.get("currentSmoker", 0) == 1:
+            q_smoke = st.checkbox("🚭 Полный отказ от курения", value=True, key="sim_smoke")
+            if q_smoke:
+                sim_changes["currentSmoker"] = 0
+                sim_changes["cigsPerDay"] = 0.0
+
+        if cur_p.get("sysBP", 120) >= 130 or cur_p.get("diaBP", 80) >= 85:
+            q_bp = st.checkbox("🩺 Целевое АД (< 125/78 мм рт.ст.)", value=True, key="sim_bp")
+            if q_bp:
+                sim_changes["sysBP"] = 125.0
+                sim_changes["diaBP"] = 78.0
+                sim_changes["prevalentHyp"] = 0
+
+    with col_c2:
+        if cur_p.get("totChol", 200) >= 200:
+            q_chol = st.checkbox("🥗 Снижение холестерина на 20%", value=True, key="sim_chol")
+            if q_chol:
+                sim_changes["totChol"] = max(160.0, round(float(cur_p.get("totChol", 200)) * 0.8, 1))
+
+        if cur_p.get("BMI", 25) >= 25.0:
+            q_bmi = st.checkbox("⚖️ Оптимизация массы тела (ИМТ < 25)", value=False, key="sim_bmi")
+            if q_bmi:
+                sim_changes["BMI"] = 24.5
+
+    with col_c3:
+        if cur_p.get("glucose", 90) >= 100 or cur_p.get("diabetes", 0) == 1:
+            q_glu = st.checkbox("🩸 Нормализация гликемии (< 5.6 ммоль/л)", value=False, key="sim_glu")
+            if q_glu:
+                sim_changes["glucose"] = 95.0
+
+    if sim_changes:
+        sim_dyn = simulate_intervention(cur_p, sim_changes)
+        b_res = sim_dyn["base"]
+        s_res = sim_dyn["simulated"]
+        d_res = sim_dyn["deltas"]
+
+        st.markdown("##### Сравнение: Исходный профиль vs Смоделированный результат")
+        col_s1, col_s2, col_s3, col_s4 = st.columns(4)
+        with col_s1:
+            with st.container(border=True):
+                st.caption(t("card_chd_title"))
+                st.metric(
+                    label="Новый риск ИБС",
+                    value=f"{s_res['p_chd']*100:.1f}%",
+                    delta=f"{d_res['delta_chd_pp']:.1f} п.п.",
+                    delta_color="normal",
+                )
+        with col_s2:
+            with st.container(border=True):
+                st.caption(t("card_heart_age_title"))
+                st.metric(
+                    label="Новый возраст сердца",
+                    value=f"{s_res['heart_age']:.1f} лет",
+                    delta=f"{d_res['delta_heart_age']:.1f} лет",
+                    delta_color="normal",
+                )
+        with col_s3:
+            with st.container(border=True):
+                st.caption(t("card_life_exp_title"))
+                st.metric(
+                    label="Новая оценка жизни",
+                    value=f"{s_res['life_expectancy']:.1f} лет",
+                    delta=f"+{d_res['delta_life_exp']:.1f} лет",
+                    delta_color="normal",
+                )
+        with col_s4:
+            with st.container(border=True):
+                st.caption(t("card_dm_title"))
+                st.metric(
+                    label="Вероятность диабета",
+                    value=f"{s_res['p_diabetes']*100:.1f}%",
+                    delta=f"{d_res['delta_diabetes_pp']:.1f} п.п.",
+                    delta_color="normal",
+                )
+    else:
+        st.info("Отметьте вмешательства выше, чтобы посмотреть динамический перерасчет риска.")
+
+with tab_xai:
     st.subheader(t("xai_heading"))
     st.caption(t("xai_desc"))
 
     xai_res = explain_prediction(cur_p, head="chd", m_steps=50)
     attrs = xai_res["attributions_pp"]
 
-    # Filter out near-zero attributions for clean charting
     feat_display_names = {
         "male": "Пол (мужской)",
         "age": "Возраст",
@@ -468,7 +615,74 @@ with tab1:
     else:
         st.info("Вклады факторов близки к эталонным оптимальным значениям.")
 
-with tab2:
+with tab_bio:
+    st.subheader(t("biomarkers_heading"))
+    st.caption(t("biomarkers_desc"))
+
+    tc_val_display = from_mgdl(cur_p.get("totChol", 200), "totChol", units)
+    glu_val_display = from_mgdl(cur_p.get("glucose", 90), "glucose", units)
+    u_label = "ммоль/л" if units == "mmol" else "mg/dL"
+
+    bp_cls = classify("bp", cur_p.get("sysBP", 120), sex=str(cur_p.get("male", 1)), secondary_value=cur_p.get("diaBP", 80))
+    tc_cls = classify("totChol", cur_p.get("totChol", 200), sex=str(cur_p.get("male", 1)))
+    glu_cls = classify("glucose", cur_p.get("glucose", 90), sex=str(cur_p.get("male", 1)))
+    bmi_cls = classify("bmi", cur_p.get("BMI", 25), sex=str(cur_p.get("male", 1)))
+
+    def status_badge(lvl):
+        if lvl == "ok":
+            return "🟢 Оптимально"
+        elif lvl == "warn":
+            return "🟡 Погранично"
+        else:
+            return "🔴 Повышено"
+
+    bio_rows = [
+        {
+            "Биомаркер": "Артериальное давление (САД / ДАД)",
+            "Ваше значение": f"{int(cur_p.get('sysBP', 120))} / {int(cur_p.get('diaBP', 80))} мм рт.ст.",
+            "Целевая норма": bp_cls.get("normal_range", "< 130/80"),
+            "Клинический статус": status_badge(bp_cls.get("level", "ok")),
+            "Рекомендации / Источник": bp_cls.get("source", "ESC/ESH 2018"),
+        },
+        {
+            "Биомаркер": f"Общий холестерин ({u_label})",
+            "Ваше значение": f"{tc_val_display:.2f} {u_label}",
+            "Целевая норма": "< 5.0 ммоль/л (< 200 мг/дл)",
+            "Клинический статус": status_badge(tc_cls.get("level", "ok")),
+            "Рекомендации / Источник": tc_cls.get("source", "NCEP ATP III"),
+        },
+        {
+            "Биомаркер": f"Глюкоза натощак ({u_label})",
+            "Ваше значение": f"{glu_val_display:.2f} {u_label}",
+            "Целевая норма": "< 5.6 ммоль/л (< 100 мг/дл)",
+            "Клинический статус": status_badge(glu_cls.get("level", "ok")),
+            "Рекомендации / Источник": glu_cls.get("source", "WHO / ADA"),
+        },
+        {
+            "Биомаркер": "Индекс массы тела (ИМТ)",
+            "Ваше значение": f"{cur_p.get('BMI', 25):.1f} кг/м²",
+            "Целевая норма": "18.5 – 24.9 кг/м²",
+            "Клинический статус": status_badge(bmi_cls.get("level", "ok")),
+            "Рекомендации / Источник": bmi_cls.get("source", "WHO Guidelines"),
+        },
+        {
+            "Биомаркер": "Статус курения табака",
+            "Ваше значение": f"Курит ({int(cur_p.get('cigsPerDay', 0))} сигарет/сут)" if cur_p.get("currentSmoker") else "Не курит",
+            "Целевая норма": "Полный отказ от табака",
+            "Клинический статус": "🔴 Фактор риска" if cur_p.get("currentSmoker") else "🟢 Норма",
+            "Рекомендации / Источник": "WHO FCTC / ESC 2021",
+        },
+        {
+            "Биомаркер": "Пульс в покое (ЧСС)",
+            "Ваше значение": f"{int(cur_p.get('heartRate', 72))} уд/мин",
+            "Целевая норма": "60 – 80 уд/мин",
+            "Клинический статус": "🟢 Оптимально" if 60 <= cur_p.get("heartRate", 72) <= 80 else "🟡 Вне диапазона",
+            "Рекомендации / Источник": "ESC Guidelines",
+        },
+    ]
+    st.table(pd.DataFrame(bio_rows))
+
+with tab_traj:
     st.subheader(t("traj_heading"))
     st.caption(t("traj_desc"))
 
@@ -505,7 +719,7 @@ with tab2:
     )
     st.altair_chart(chart_traj, width="stretch")
 
-with tab3:
+with tab_exp:
     st.subheader(t("export_heading"))
     exp_col1, exp_col2 = st.columns(2)
 

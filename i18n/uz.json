@@ -111,5 +111,14 @@
   "status_elevated": "Biroz oshgan",
   "status_high": "Yuqori daraja",
   "age_extrapolation_warning": "Diqqat: yosh Framingham o'rganish tanlanmasi doirasidan (32–70 yosh) tashqarida. Xavf hisobi ekstrapolyatsiya hisoblanadi.",
-  "footer_disclaimer": "MedAI Longevity Platform • Tadqiqot prototipi • Shifokor maslahati o'rnini bosmaydi"
+  "footer_disclaimer": "MedAI Longevity Platform • Tadqiqot prototipi • Shifokor maslahati o'rnini bosmaydi",
+  "tab_what_if": "Nima bo'lsa? (Simulyatsiya)",
+  "tab_biomarkers": "Biomarkerlar va me'yorlar",
+  "verdict_title": "Klinik xulosa (Verdikt)",
+  "what_if_heading": "Shaxsiy choralar interaktiv simulyatsiyasi",
+  "what_if_desc": "Bemor bajarishga tayyor bo'lgan choralarni belgilang va xavfning kamayishi hamda tomirlar yosharishini ko'ring.",
+  "biomarkers_heading": "Kiritilgan barcha biomarkerlarning klinik bahosi",
+  "biomarkers_desc": "Shaxsiy ko'rsatkichlarning dalillarga asoslangan tibbiyot (ESC, JSST, NCEP) me'yoriy oraliqlari bilan taqqoslanishi.",
+  "calc_bmi_expander": "Bo'y va vazn bo'yicha TVI hisoblash",
+  "calc_bmi_btn": "Hisoblangan TVI ni qo'llash"
 }

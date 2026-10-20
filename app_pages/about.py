@@ -53,5 +53,21 @@ with st.container(border=True):
         st.write("• Мобильное приложение для граждан")
         st.write("• Модуль раннего скрининга для семейных врачей сельских пунктов")
 
+# 4. Project Team & Institution
+with st.container(border=True):
+    st.subheader("4. Команда проекта и контакты")
+    col_t1, col_t2 = st.columns(2)
+    with col_t1:
+        st.markdown("##### 🎓 Автор стартапа")
+        st.markdown("**ФИО автора / студента:** *[Укажите ваше ФИО]*")
+        st.markdown("**Учебное заведение:** *[Укажите ваш лицей, колледж или университет]*")
+        st.markdown("**Направление:** Медицинская информатика / Искусственный интеллект / Data Science")
+    with col_t2:
+        st.markdown("##### 🔬 Научный руководитель / Наставник")
+        st.markdown("**ФИО наставника:** *[Укажите ФИО преподавателя или ментора]*")
+        st.markdown("**Контакты для жюри:** *[Ваш контактный email или Telegram]*")
+        st.markdown("**Репозиторий проекта:** [GitHub / Very-good-project](https://github.com/James0010101/Very-good-project)")
+
 st.divider()
 st.caption(t("footer_disclaimer"))
+

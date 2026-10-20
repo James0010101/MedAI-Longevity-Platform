@@ -111,5 +111,14 @@
   "status_elevated": "Elevated",
   "status_high": "High",
   "age_extrapolation_warning": "Notice: age is outside the Framingham training cohort (32–70 years). Risk calculation represents clinical extrapolation.",
-  "footer_disclaimer": "MedAI Longevity Platform • Academic Prototype • Not a replacement for physician consultation"
+  "footer_disclaimer": "MedAI Longevity Platform • Academic Prototype • Not a replacement for physician consultation",
+  "tab_what_if": "What If? (Simulation)",
+  "tab_biomarkers": "Biomarkers & Clinical Norms",
+  "verdict_title": "Clinical Summary (Verdict)",
+  "what_if_heading": "Interactive Intervention Simulation",
+  "what_if_desc": "Select lifestyle and therapeutic interventions to observe instantaneous risk reduction and heart rejuvenation.",
+  "biomarkers_heading": "Clinical Evaluation of All Entered Biomarkers",
+  "biomarkers_desc": "Comparison of individual parameters against evidence-based reference guidelines (ESC, WHO, NCEP).",
+  "calc_bmi_expander": "Calculate BMI from Height and Weight",
+  "calc_bmi_btn": "Apply Calculated BMI"
 }
