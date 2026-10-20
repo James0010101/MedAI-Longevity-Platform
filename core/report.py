@@ -38,7 +38,7 @@ def generate_html_report(
     raw_glu = float(patient.get("glucose", 90.0))
     val_tc = from_mgdl(raw_tc, "totChol", units)
     val_glu = from_mgdl(raw_glu, "glucose", units)
-    unit_label = "ммоль/л" if units == "mmol" else "mg/dL"
+    unit_label = "mmol/L" if (units == "mmol" and lang == "en") else ("mmol/l" if (units == "mmol" and lang == "uz") else ("ммоль/л" if units == "mmol" else "mg/dL"))
 
     # Prediction metrics
     p_chd = prediction.get("p_chd", 0.0) * 100.0
@@ -66,10 +66,10 @@ def generate_html_report(
         recs_rows_html += f"""
         <div style="margin-bottom: 12px; padding: 10px; border-left: 4px solid #006c49; background: #f9fbf9;">
             <div style="font-weight: bold; color: #006c49; font-size: 14px;">{idx}. {t(item['title_key'], lang=lang)}</div>
-            <div style="font-size: 12px; color: #555; margin: 4px 0;"><strong>Источник:</strong> {item['source']}</div>
+            <div style="font-size: 12px; color: #555; margin: 4px 0;"><strong>{t('bio_col_source', lang=lang)}:</strong> {item['source']}</div>
             <div style="font-size: 13px; color: #222; margin: 4px 0;">{t(item['rationale_key'], lang=lang)}</div>
             <div style="font-size: 12px; color: #006c49; font-weight: bold; margin-top: 4px;">
-                Ожидаемый эффект: {t('rec_chd_reduction', lang=lang, val=abs(item['delta_chd_pp']))} | 
+                {t('rec_quant_effect', lang=lang)} {t('rec_chd_reduction', lang=lang, val=abs(item['delta_chd_pp']))} | 
                 {t('rec_heart_age_rejuvenation', lang=lang, val=abs(item['delta_heart_age']))} | 
                 {t('rec_life_gain', lang=lang, val=abs(item['delta_life_exp']))}
             </div>
@@ -84,27 +84,23 @@ def generate_html_report(
 <html lang="{lang}">
 <head>
 <meta charset="utf-8">
-<title>MedAI Longevity Platform — Клинический отчёт #{report_id}</title>
+<title>MedAI Longevity Platform — {t('report_title', lang=lang)} #{report_id}</title>
 <style>
-    @page {{
-        size: A4;
-        margin: 15mm;
-    }}
     body {{
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         color: #1a1a1a;
-        line-height: 1.4;
+        line-height: 1.45;
         font-size: 13px;
-        margin: 0;
-        padding: 0;
+        margin: 20px;
+        background: #fff;
     }}
     .header {{
+        border-bottom: 2px solid #006c49;
+        padding-bottom: 12px;
+        margin-bottom: 16px;
         display: flex;
         justify-content: space-between;
-        align-items: center;
-        border-bottom: 2px solid #006c49;
-        padding-bottom: 10px;
-        margin-bottom: 15px;
+        align-items: flex-end;
     }}
     .title {{
         font-size: 20px;
@@ -120,62 +116,58 @@ def generate_html_report(
         font-size: 14px;
         font-weight: bold;
         color: #006c49;
-        border-bottom: 1px solid #ddd;
+        margin-top: 16px;
+        margin-bottom: 8px;
+        border-bottom: 1px solid #e0e0e0;
         padding-bottom: 4px;
-        margin-top: 15px;
-        margin-bottom: 10px;
     }}
-    .grid-2 {{
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 10px;
+    table {{
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 12px;
+    }}
+    th, td {{
+        border: 1px solid #ddd;
+        padding: 6px 8px;
+        text-align: left;
+        font-size: 12px;
+    }}
+    th {{
+        background-color: #f5f7f6;
+        font-weight: 600;
     }}
     .grid-4 {{
         display: grid;
         grid-template-columns: repeat(4, 1fr);
         gap: 10px;
+        margin-bottom: 16px;
     }}
     .card {{
-        border: 1px solid #e0e0e0;
-        border-radius: 6px;
-        padding: 10px;
-        background: #ffffff;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        padding: 8px 10px;
+        background: #fafafa;
     }}
     .card-metric {{
-        font-size: 20px;
+        font-size: 18px;
         font-weight: bold;
-        color: #006c49;
+        color: #111;
         margin: 4px 0;
     }}
     .badge {{
         display: inline-block;
-        padding: 2px 8px;
-        border-radius: 12px;
-        font-size: 11px;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-size: 10px;
         font-weight: bold;
-        color: #ffffff;
+        color: #fff;
         background: {chd_badge_color};
     }}
-    table {{
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 12px;
-    }}
-    th, td {{
-        padding: 6px 8px;
-        border-bottom: 1px solid #eee;
-        text-align: left;
-    }}
-    th {{
-        background: #f4fbf4;
-        color: #006c49;
-    }}
     .disclaimer {{
-        margin-top: 25px;
+        margin-top: 24px;
         padding: 10px;
-        background: #fdf6ec;
-        border: 1px solid #faecd8;
-        border-radius: 4px;
+        background: #fff8e1;
+        border-left: 4px solid #ffb300;
         font-size: 11px;
         color: #7a5216;
     }}
@@ -198,78 +190,78 @@ def generate_html_report(
         <div style="font-size: 12px; color: #555;">{t('app_subtitle', lang=lang)}</div>
     </div>
     <div class="meta">
-        <div><strong>Отчёт №:</strong> {report_id}</div>
-        <div><strong>Дата:</strong> {now_str}</div>
-        <div><strong>Версия:</strong> 2.0.0 (Research Prototype)</div>
+        <div><strong>{t('report_title', lang=lang)} №:</strong> {report_id}</div>
+        <div><strong>{t('report_param_age', lang=lang)}:</strong> {now_str}</div>
+        <div><strong>Version:</strong> 2.0.0 (Research Prototype)</div>
     </div>
 </div>
 
-<div class="section-title">1. Паспорт пациента и исходные биомаркеры</div>
+<div class="section-title">{t('report_sec_1', lang=lang)}</div>
 <table>
     <tr>
-        <th>Показатель</th><th>Значение</th>
-        <th>Показатель</th><th>Значение</th>
+        <th>{t('report_col_metric', lang=lang)}</th><th>{t('report_col_value', lang=lang)}</th>
+        <th>{t('report_col_metric', lang=lang)}</th><th>{t('report_col_value', lang=lang)}</th>
     </tr>
     <tr>
-        <td><strong>Возраст</strong></td><td>{age} лет</td>
-        <td><strong>Артериальное давление</strong></td><td>{sbp}/{dbp} мм рт.ст.</td>
+        <td><strong>{t('report_param_age', lang=lang)}</strong></td><td>{age} {t('res_years', lang=lang)}</td>
+        <td><strong>{t('report_param_bp', lang=lang)}</strong></td><td>{sbp}/{dbp} mmHg</td>
     </tr>
     <tr>
-        <td><strong>Биологический пол</strong></td><td>{sex_label}</td>
-        <td><strong>Гипотензивная терапия</strong></td><td>{bp_meds}</td>
+        <td><strong>{t('report_param_sex', lang=lang)}</strong></td><td>{sex_label}</td>
+        <td><strong>{t('report_param_meds', lang=lang)}</strong></td><td>{bp_meds}</td>
     </tr>
     <tr>
-        <td><strong>Статус курения</strong></td><td>{smoker}</td>
-        <td><strong>Индекс массы тела (ИМТ)</strong></td><td>{bmi} кг/м²</td>
+        <td><strong>{t('report_param_smoke', lang=lang)}</strong></td><td>{smoker}</td>
+        <td><strong>{t('report_param_bmi', lang=lang)}</strong></td><td>{bmi} kg/m²</td>
     </tr>
     <tr>
-        <td><strong>Общий холестерин</strong></td><td>{val_tc:.2f} {unit_label}</td>
-        <td><strong>Пульс в покое</strong></td><td>{hr} уд/мин</td>
+        <td><strong>{t('report_param_chol', lang=lang)}</strong></td><td>{val_tc:.2f} {unit_label}</td>
+        <td><strong>{t('report_param_hr', lang=lang)}</strong></td><td>{hr} bpm</td>
     </tr>
     <tr>
-        <td><strong>Глюкоза натощак</strong></td><td>{val_glu:.2f} {unit_label}</td>
-        <td><strong>Ранее диабет</strong></td><td>{"Да" if patient.get("diabetes") else "Нет"}</td>
+        <td><strong>{t('report_param_glu', lang=lang)}</strong></td><td>{val_glu:.2f} {unit_label}</td>
+        <td><strong>{t('report_param_dm', lang=lang)}</strong></td><td>{t('report_yes', lang=lang) if patient.get("diabetes") else t('report_no', lang=lang)}</td>
     </tr>
 </table>
 
-<div class="section-title">2. Результаты скрининга сердечно-сосудистого риска и долголетия</div>
+<div class="section-title">{t('report_sec_2', lang=lang)}</div>
 <div class="grid-4 no-break">
     <div class="card">
         <div style="font-size: 11px; color: #666;">{t('card_chd_title', lang=lang)}</div>
         <div class="card-metric">{p_chd:.1f}%</div>
         <span class="badge">{chd_cat}</span>
-        <div style="font-size: 10px; color: #777; margin-top: 4px;">Неопределённость: ±{p_chd_std:.1f}%</div>
+        <div style="font-size: 10px; color: #777; margin-top: 4px;">{t('card_chd_uncertainty', lang=lang, val=f'{p_chd_std:.1f}')}</div>
     </div>
     <div class="card">
         <div style="font-size: 11px; color: #666;">{t('card_heart_age_title', lang=lang)}</div>
-        <div class="card-metric">{heart_age:.1f} лет</div>
+        <div class="card-metric">{heart_age:.1f} {t('res_years', lang=lang)}</div>
         <div style="font-size: 11px; color: {'#ba1a1a' if ha_delta > 0 else '#006c49'}; font-weight: bold;">
-            {'+' if ha_delta > 0 else ''}{ha_delta:.1f} к паспортному
+            {'+' if ha_delta > 0 else ''}{ha_delta:.1f} {t('res_delta_passport', lang=lang)}
         </div>
         <div style="font-size: 10px; color: #777; margin-top: 4px;">D'Agostino Circulation 2008</div>
     </div>
     <div class="card">
         <div style="font-size: 11px; color: #666;">{t('card_life_exp_title', lang=lang)}</div>
-        <div class="card-metric">{life_exp:.1f} лет</div>
-        <div style="font-size: 10px; color: #777; margin-top: 4px;">Таблицы ВОЗ для Узбекистана</div>
+        <div class="card-metric">{life_exp:.1f} {t('res_years', lang=lang)}</div>
+        <div style="font-size: 10px; color: #777; margin-top: 4px;">{t('card_life_exp_sub', lang=lang)}</div>
     </div>
     <div class="card">
         <div style="font-size: 11px; color: #666;">{t('card_dm_title', lang=lang)}</div>
         <div class="card-metric">{p_dm:.1f}%</div>
         <div style="font-size: 11px; color: {'#ba1a1a' if p_dm >= 50 else '#006c49'}; font-weight: bold;">
-            {'Скрининг-сигнал' if p_dm >= 50 else 'Норма'}
+            {t('card_dm_high', lang=lang) if p_dm >= 50 else t('card_dm_low', lang=lang)}
         </div>
-        <div style="font-size: 10px; color: #777; margin-top: 4px;">Текущий статус (Нейросеть)</div>
+        <div style="font-size: 10px; color: #777; margin-top: 4px;">{t('card_dm_sub', lang=lang)}</div>
     </div>
 </div>
 
-<div class="section-title">3. Персонализированный план снижения риска (ранжирован нейросетью)</div>
+<div class="section-title">{t('report_sec_3', lang=lang)}</div>
 <div class="no-break">
     {recs_rows_html}
 </div>
 
 <div class="disclaimer no-break">
-    <strong>{t('meth_disclaimer_title', lang=lang)}:</strong> {t('meth_disclaimer_body', lang=lang)}
+    <strong>{t('meth_disclaimer_title', lang=lang)}:</strong> {t('report_disclaimer_text', lang=lang)}
 </div>
 
 </body>

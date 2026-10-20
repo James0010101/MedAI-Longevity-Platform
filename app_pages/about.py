@@ -5,69 +5,57 @@ import streamlit as st
 from core.i18n import get_current_language, t
 
 lang = get_current_language()
-st.title(f"ℹ️ {t('about_title')}")
-st.caption(t("about_mission"))
+st.title(f"ℹ️ {t('about_title', lang=lang)}")
+st.caption(t("about_mission", lang=lang))
 
 # 1. Problem Statement
 with st.container(border=True):
-    st.subheader("1. Актуальность проблемы в Республике Узбекистан")
-    st.markdown("""
-    - **Высокая доля сердечно-сосудистой смертности:** Болезни системы кровообращения (БСК) занимают **более 55%** в структуре общей смертности населения Узбекистана.
-    - **Позднее обращение:** В большинстве случаев атеросклероз и артериальная гипертония протекают бессимптомно вплоть до развития инфаркта миокарда или инсульта.
-    - **Дефицит времени на первичном звене:** У врача общей практики в поликлинике есть 10–12 минут на приём, чего недостаточно для комплексного ручного расчёта шкал SCORE/Framingham и подробного разъяснения пациенту.
-    """)
+    st.subheader(t("about_sec_1_title", lang=lang))
+    st.markdown(t("about_sec_1_text", lang=lang))
 
 # 2. Solution & Technology
 with st.container(border=True):
-    st.subheader("2. Решение: MedAI Longevity Platform")
-    st.markdown("""
-    **MedAI** — это отечественный цифровой ассистент скрининга сердечно-сосудистого риска и персонализированного долголетия, разработанный в рамках молодежной стартап-инициативы.
-
-    **Ключевые технологические преимущества:**
-    1. **Честный искусственный интеллект (XAI):** Нейросеть не работает как «чёрный ящик». Метод **Integrated Gradients** прозрачно показывает врачу и пациенту вклад каждого фактора в процентных пунктах.
-    2. **Двухуровневая гибридная архитектура:**
-       - *Клинические пороги* (ВОЗ, ESC/ESH 2018) строго определяют наличие проблемы.
-       - *Нейросеть* рассчитывает индивидуальный выигрыш ($\Delta$ риска, омоложение сердца) и ранжирует рекомендации по максимальной пользе.
-    3. **Адаптация под Узбекистан:** Интеграция официальных таблиц смертности ВОЗ для Республики Узбекистан (2023) и поддержка узбекского языка на латинице.
-    4. **Международный стандарт интероперабельности:** Встроенный экспорт в стандарте **HL7 FHIR R4**, готовый к интеграции с национальными медицинскими информационными системами (МИС).
-    """)
+    st.subheader(t("about_sec_2_title", lang=lang))
+    st.markdown(t("about_sec_2_text", lang=lang))
 
 # 3. Roadmap & Implementation
 with st.container(border=True):
-    st.subheader("3. Дорожная карта развития проекта")
+    st.subheader(t("about_sec_3_title", lang=lang))
     col_r1, col_r2, col_r3 = st.columns(3)
     with col_r1:
-        st.markdown("##### Этап 1: Прототип (Текущий)")
-        st.write("✓ Верифицированная нейросеть")
-        st.write("✓ Клинические формулы D'Agostino")
-        st.write("✓ Триязычный интерфейс (RU, UZ, EN)")
-        st.write("✓ Полный аудит кода и тесты")
+        st.markdown(f"##### {t('about_phase_1_title', lang=lang)}")
+        st.write(t("about_phase_1_item_1", lang=lang))
+        st.write(t("about_phase_1_item_2", lang=lang))
+        st.write(t("about_phase_1_item_3", lang=lang))
+        st.write(t("about_phase_1_item_4", lang=lang))
     with col_r2:
-        st.markdown("##### Этап 2: Пилотное внедрение")
-        st.write("• Пилот в студенческих поликлиниках Ташкента")
-        st.write("• Сбор локальных когортных данных")
-        st.write("• Перекалибровка модели под генотип и образ жизни населения РУз")
+        st.markdown(f"##### {t('about_phase_2_title', lang=lang)}")
+        st.write(t("about_phase_2_item_1", lang=lang))
+        st.write(t("about_phase_2_item_2", lang=lang))
+        st.write(t("about_phase_2_item_3", lang=lang))
     with col_r3:
-        st.markdown("##### Этап 3: Масштабирование")
-        st.write("• Интеграция с платформой e-Health Узбекистана")
-        st.write("• Мобильное приложение для граждан")
-        st.write("• Модуль раннего скрининга для семейных врачей сельских пунктов")
+        st.markdown(f"##### {t('about_phase_3_title', lang=lang)}")
+        st.write(t("about_phase_3_item_1", lang=lang))
+        st.write(t("about_phase_3_item_2", lang=lang))
+        st.write(t("about_phase_3_item_3", lang=lang))
 
 # 4. Project Team & Institution
 with st.container(border=True):
-    st.subheader("4. Команда проекта и контакты")
+    st.subheader(t("about_sec_4_title", lang=lang))
+    st.caption(t("about_team_agency", lang=lang))
+    st.caption(t("about_team_contest", lang=lang))
+    st.divider()
     col_t1, col_t2 = st.columns(2)
     with col_t1:
-        st.markdown("##### 🎓 Автор стартапа")
-        st.markdown("**ФИО автора / студента:** *[Укажите ваше ФИО]*")
-        st.markdown("**Учебное заведение:** *[Укажите ваш лицей, колледж или университет]*")
-        st.markdown("**Направление:** Медицинская информатика / Искусственный интеллект / Data Science")
+        st.markdown(f"##### {t('about_author_title', lang=lang)}")
+        st.markdown(t("about_author_name", lang=lang))
+        st.markdown(t("about_author_inst", lang=lang))
+        st.markdown(t("about_author_field", lang=lang))
     with col_t2:
-        st.markdown("##### 🔬 Научный руководитель / Наставник")
-        st.markdown("**ФИО наставника:** *[Укажите ФИО преподавателя или ментора]*")
-        st.markdown("**Контакты для жюри:** *[Ваш контактный email или Telegram]*")
-        st.markdown("**Репозиторий проекта:** [GitHub / Very-good-project](https://github.com/James0010101/Very-good-project)")
+        st.markdown(f"##### {t('about_mentor_title', lang=lang)}")
+        st.markdown(t("about_mentor_name", lang=lang))
+        st.markdown(t("about_mentor_contact", lang=lang))
+        st.markdown(t("about_mentor_repo", lang=lang))
 
 st.divider()
-st.caption(t("footer_disclaimer"))
-
+st.caption(t("footer_disclaimer", lang=lang))

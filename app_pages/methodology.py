@@ -12,11 +12,11 @@ from core.config import MODELS_DIR
 from core.i18n import get_current_language, t
 
 lang = get_current_language()
-st.title(f"📊 {t('meth_title')}")
+st.title(f"📊 {t('meth_title', lang=lang)}")
 
 # 1. Medical Disclaimer
 with st.container(border=True):
-    st.warning(f"⚠️ **{t('meth_disclaimer_title')}:** {t('meth_disclaimer_body')}")
+    st.warning(f"⚠️ **{t('meth_disclaimer_title', lang=lang)}:** {t('meth_disclaimer_body', lang=lang)}")
 
 # Load Real Audited Metrics from models/metrics.json
 metrics_file = MODELS_DIR / "metrics.json"
@@ -26,59 +26,63 @@ if metrics_file.exists():
         metrics = json.load(f)
 
 # 2. Section: Training Cohort & Data
-st.subheader(t("meth_sec_data"))
+st.subheader(t("meth_sec_data", lang=lang))
 with st.container(border=True):
-    st.markdown("""
-    **Когорта обучения:** Framingham Heart Study (публичная верифицированная учебная когорта Национального института сердца, легких и крови США — NHLBI).
-    - **Общий объем выборки:** 4 240 участников, 16 исходных клинических признаков.
-    - **Стратифицированное разбиение:** 70% Train (2 968 чел.), 15% Validation (636 чел.), 15% Test (636 чел.).
-    - **Распространенность исходов на тесте:** ИБС (10-летний инцидент) — **15.25%**, сахарный диабет — **2.83%**.
-    - **Предобработка:** Заполнение пропусков медианами, рассчитанными *исключительно* на обучающей выборке. Стандартизация (Z-score) зафиксирована в метаданных модели.
-    - **Важное клиническое ограничение:** Когорта отражает популяцию США второй половины XX века. Для внедрения в клиническую практику здравоохранения Узбекистана необходима локальная калибровка на репрезентативной национальной выборке.
-    """)
+    st.markdown(t("meth_cohort_desc", lang=lang))
 
 # 3. Section: Neural Network Architecture & Real Metrics
-st.subheader(t("meth_sec_model"))
+st.subheader(t("meth_sec_model", lang=lang))
 
 tab_metrics1, tab_metrics2, tab_metrics3 = st.tabs([
-    "📈 Кривые обучения (Loss)",
-    "🎯 Метрики качества (ROC-AUC & Brier)",
-    "⚖️ Калибровка вероятностей",
+    t("method_tab_loss", lang=lang),
+    t("method_tab_metrics", lang=lang),
+    t("method_tab_calibration", lang=lang),
 ])
 
 with tab_metrics1:
-    st.markdown("##### Реальная динамика функции потерь при обучении (без хардкода)")
+    st.markdown(f"##### {t('method_loss_heading', lang=lang)}")
     hist = metrics.get("training", {}).get("history", {})
     if hist and "epochs" in hist:
+        lbl_epoch = t("method_loss_epoch", lang=lang)
+        lbl_sample = t("method_loss_sample", lang=lang)
+        lbl_train = t("method_loss_train", lang=lang)
+        lbl_val = t("method_loss_val", lang=lang)
+
         df_loss = pd.DataFrame({
-            "Эпоха": hist["epochs"],
-            "Train Loss": hist["train_loss"],
-            "Validation Loss": hist["val_loss"],
-        }).melt(id_vars=["Эпоха"], value_vars=["Train Loss", "Validation Loss"], var_name="Выборка", value_name="BCE Loss")
+            lbl_epoch: hist["epochs"],
+            lbl_train: hist["train_loss"],
+            lbl_val: hist["val_loss"],
+        }).melt(
+            id_vars=[lbl_epoch],
+            value_vars=[lbl_train, lbl_val],
+            var_name=lbl_sample,
+            value_name="BCE Loss",
+        )
 
         chart_loss = (
             alt.Chart(df_loss)
             .mark_line(strokeWidth=2.5)
             .encode(
-                x=alt.X("Эпоха:Q", title="Эпоха обучения"),
-                y=alt.Y("BCE Loss:Q", title="Функция потерь (Binary Cross-Entropy)"),
+                x=alt.X(f"{lbl_epoch}:Q", title=t("method_loss_axis_x", lang=lang)),
+                y=alt.Y("BCE Loss:Q", title=t("method_loss_axis_y", lang=lang)),
                 color=alt.Color(
-                    "Выборка:N",
-                    scale=alt.Scale(domain=["Train Loss", "Validation Loss"], range=["#006c49", "#ba1a1a"]),
+                    f"{lbl_sample}:N",
+                    scale=alt.Scale(domain=[lbl_train, lbl_val], range=["#006c49", "#ba1a1a"]),
+                    title=lbl_sample,
                 ),
-                tooltip=["Эпоха", "BCE Loss", "Выборка"],
+                tooltip=[lbl_epoch, "BCE Loss", lbl_sample],
             )
             .properties(height=320)
         )
         st.altair_chart(chart_loss, width="stretch")
         best_ep = metrics.get("training", {}).get("best_epoch", "N/A")
         best_vl = metrics.get("training", {}).get("best_val_loss", "N/A")
-        st.caption(f"Ранняя остановка (Early Stopping): лучший чекпоинт зафиксирован на эпохе {best_ep} с валидационными потерями {best_vl}.")
+        st.caption(t("method_loss_early_stop", lang=lang, ep=best_ep, loss=best_vl))
     else:
-        st.info("Данные истории обучения отсутствуют.")
+        st.info(t("method_loss_no_data", lang=lang))
 
 with tab_metrics2:
-    st.markdown("##### Сравнение предсказательной способности на отложенной тестовой выборке (636 чел.)")
+    st.markdown(f"##### {t('method_metrics_heading', lang=lang)}")
 
     chd_m = metrics.get("chd", {})
     dm_m = metrics.get("diabetes", {})
@@ -92,100 +96,93 @@ with tab_metrics2:
     nn_dm_ci = dm_m.get("nn", {}).get("auc_ci_95", [0.0, 0.0])
     lr_dm_auc = dm_m.get("logistic_regression", {}).get("auc", 0.0)
 
+    col_task = t("method_col_task", lang=lang)
+    col_nn = t("method_col_nn", lang=lang)
+    col_lr = t("method_col_lr", lang=lang)
+    col_dag = t("method_col_dag", lang=lang)
+    col_brier = t("method_col_brier", lang=lang)
+
     eval_table = [
         {
-            "Целевая задача": "10-летний риск ИБС (CHD)",
-            "Модель MedAI (Нейросеть)": f"ROC-AUC = {nn_chd_auc:.3f} [{nn_chd_ci[0]:.3f}, {nn_chd_ci[1]:.3f}]",
-            "Базовый LogReg": f"ROC-AUC = {lr_chd_auc:.3f}",
-            "Референс D'Agostino 2008": f"ROC-AUC = {dag_chd_auc:.3f}",
-            "Brier Score (калибровка)": f"{chd_m.get('nn', {}).get('brier', 0.0):.4f}",
+            col_task: t("method_task_chd", lang=lang),
+            col_nn: f"ROC-AUC = {nn_chd_auc:.3f} [{nn_chd_ci[0]:.3f}, {nn_chd_ci[1]:.3f}]",
+            col_lr: f"ROC-AUC = {lr_chd_auc:.3f}",
+            col_dag: f"ROC-AUC = {dag_chd_auc:.3f}",
+            col_brier: f"{chd_m.get('nn', {}).get('brier', 0.0):.4f}",
         },
         {
-            "Целевая задача": "Скрининг сахарного диабета",
-            "Модель MedAI (Нейросеть)": f"ROC-AUC = {nn_dm_auc:.3f} [{nn_dm_ci[0]:.3f}, {nn_dm_ci[1]:.3f}]",
-            "Базовый LogReg": f"ROC-AUC = {lr_dm_auc:.3f}",
-            "Референс D'Agostino 2008": "—",
-            "Brier Score (калибровка)": f"{dm_m.get('nn', {}).get('brier', 0.0):.4f}",
+            col_task: t("method_task_dm", lang=lang),
+            col_nn: f"ROC-AUC = {nn_dm_auc:.3f} [{nn_dm_ci[0]:.3f}, {nn_dm_ci[1]:.3f}]",
+            col_lr: f"ROC-AUC = {lr_dm_auc:.3f}",
+            col_dag: "—",
+            col_brier: f"{dm_m.get('nn', {}).get('brier', 0.0):.4f}",
         },
     ]
     st.table(pd.DataFrame(eval_table))
 
-    st.markdown("##### Клинические операционные характеристики при порогах риска")
+    st.markdown(f"##### {t('meth_th_heading', lang=lang)}")
     th10 = chd_m.get("nn", {}).get("threshold_10", {})
     th20 = chd_m.get("nn", {}).get("threshold_20", {})
 
     col_th1, col_th2 = st.columns(2)
     with col_th1:
         with st.container(border=True):
-            st.markdown("###### Порог скрининга: 10% (Промежуточный риск)")
-            st.write(f"- **Чувствительность (Sensitivity):** {th10.get('sensitivity', 0.0)*100:.1f}%")
-            st.write(f"- **Специфичность (Specificity):** {th10.get('specificity', 0.0)*100:.1f}%")
-            st.write(f"- **PPV (Прогностичность полож. рез.):** {th10.get('ppv', 0.0)*100:.1f}%")
-            st.caption("Обеспечивает высокую чувствительность для первичного скрининга населения.")
+            st.markdown(f"###### {t('meth_th10_title', lang=lang)}")
+            st.write(f"- **{t('meth_sens', lang=lang)}:** {th10.get('sensitivity', 0.0)*100:.1f}%")
+            st.write(f"- **{t('meth_spec', lang=lang)}:** {th10.get('specificity', 0.0)*100:.1f}%")
+            st.write(f"- **{t('meth_ppv', lang=lang)}:** {th10.get('ppv', 0.0)*100:.1f}%")
+            st.caption(t("meth_th10_sub", lang=lang))
 
     with col_th2:
         with st.container(border=True):
-            st.markdown("###### Порог скрининга: 20% (Высокий клинический риск)")
-            st.write(f"- **Чувствительность (Sensitivity):** {th20.get('sensitivity', 0.0)*100:.1f}%")
-            st.write(f"- **Специфичность (Specificity):** {th20.get('specificity', 0.0)*100:.1f}%")
-            st.write(f"- **PPV (Прогностичность полож. рез.):** {th20.get('ppv', 0.0)*100:.1f}%")
-            st.caption("Высокая специфичность: отбирает пациентов для интенсивной медикаментозной терапии.")
+            st.markdown(f"###### {t('meth_th20_title', lang=lang)}")
+            st.write(f"- **{t('meth_sens', lang=lang)}:** {th20.get('sensitivity', 0.0)*100:.1f}%")
+            st.write(f"- **{t('meth_spec', lang=lang)}:** {th20.get('specificity', 0.0)*100:.1f}%")
+            st.write(f"- **{t('meth_ppv', lang=lang)}:** {th20.get('ppv', 0.0)*100:.1f}%")
+            st.caption(t("meth_th20_sub", lang=lang))
 
 with tab_metrics3:
-    st.markdown("##### Калибровочная кривая модели ИБС")
+    st.markdown(f"##### {t('meth_calib_title', lang=lang)}")
     cal = chd_m.get("calibration", {})
     if "prob_pred" in cal and "prob_true" in cal:
+        lbl_pred = t("method_calib_pred_prob", lang=lang)
+        lbl_true = t("method_calib_true_freq", lang=lang)
+
         df_cal = pd.DataFrame({
-            "Предсказанная вероятность": cal["prob_pred"],
-            "Наблюдаемая доля событий": cal["prob_true"],
+            lbl_pred: cal["prob_pred"],
+            lbl_true: cal["prob_true"],
         })
         diag = pd.DataFrame({
-            "Предсказанная вероятность": [0.0, 0.5],
-            "Наблюдаемая доля событий": [0.0, 0.5],
+            lbl_pred: [0.0, 0.5],
+            lbl_true: [0.0, 0.5],
         })
 
         line_model = (
             alt.Chart(df_cal)
             .mark_line(point=True, color="#006c49", strokeWidth=2.5)
             .encode(
-                x=alt.X("Предсказанная вероятность:Q", scale=alt.Scale(domain=[0, 0.5])),
-                y=alt.Y("Наблюдаемая доля событий:Q", scale=alt.Scale(domain=[0, 0.5])),
-                tooltip=["Предсказанная вероятность", "Наблюдаемая доля событий"],
+                x=alt.X(f"{lbl_pred}:Q", scale=alt.Scale(domain=[0, 0.5])),
+                y=alt.Y(f"{lbl_true}:Q", scale=alt.Scale(domain=[0, 0.5])),
+                tooltip=[lbl_pred, lbl_true],
             )
         )
         line_diag = (
             alt.Chart(diag)
             .mark_line(strokeDash=[4, 4], color="#888888")
             .encode(
-                x="Предсказанная вероятность:Q",
-                y="Наблюдаемая доля событий:Q",
+                x=f"{lbl_pred}:Q",
+                y=f"{lbl_true}:Q",
             )
         )
         st.altair_chart((line_diag + line_model).properties(height=320), width="stretch")
-        st.caption("Пунктирная серая линия — идеальная калибровка. Близость зеленой линии отражает отсутствие систематического завышения или занижения вероятностей.")
+        st.caption(t("meth_calib_caption", lang=lang))
 
 # 4. Section: Clinical Formulas
-st.subheader(t("meth_sec_clinical"))
+st.subheader(t("meth_sec_clinical", lang=lang))
 with st.container(border=True):
-    st.markdown("""
-    **1. Формула сердечно-сосудистого возраста (D'Agostino et al., Circulation 2008):**
-    В отличие от старых прототипов, где возраст предсказывался нейросетью и «схлопывался» в константу,
-    в MedAI внедрена строгая аналитическая замкнутая формула:
-    $$\\text{Heart Age} = \\exp\\left(\\frac{L_{\\text{patient}} - C_{\\text{ref}}}{\\beta_{\\text{age}}}\\right)$$
-    где $C_{\\text{ref}}$ — не-возрастные коэффициенты для эталонного оптимального профиля (САД 125, ОХС 180 мг/дл, HDL 45 мг/дл, не курит, без диабета).
-    Для идеального профиля любого возраста математически доказано: $\\text{Heart Age} \\equiv \\text{Chronological Age}$.
-
-    **2. Оценка продолжительности жизни по таблицам ВОЗ для Узбекистана (2023):**
-    Используются официальные данные таблиц смертности ВОЗ (Global Health Estimates):
-    $$\\text{Оценка продолжительности жизни} = \\text{Возраст} + e_x(\\text{Heart Age})$$
-    где $e_x$ — оставшаяся продолжительность жизни для конкретного пола по официальной национальной демографической сетке.
-    """)
+    st.markdown(t("meth_clinical_desc", lang=lang))
 
 # 5. Section: Limitations
-st.subheader(t("meth_sec_limitations"))
+st.subheader(t("meth_sec_limitations", lang=lang))
 with st.container(border=True):
-    st.markdown("""
-    - **Отсутствие местных когортных исследований:** Обучение произведено на когорте Framingham (США). Для сертификации в Минздраве Узбекистана требуется валидация на выборке жителей РУз.
-    - **Ограниченность липидной панели:** Учебная выборка содержит только общий холестерин без прямого измерения ЛПНП и триглицеридов.
-    - **Статус скрининга:** Система предназначена для стратификации рисков и санитарно-просветительской работы, но не для автономной постановки клинических диагнозов.
-    """)
+    st.markdown(t("meth_limits_desc", lang=lang))
