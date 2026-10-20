@@ -14,6 +14,8 @@ build/
 .vscode/
 *.log
 .pytest_cache/
-*.npz
 code.html
 screen.png
+# Keep model weights and split data
+!models/*.npz
+!data/*.npz
