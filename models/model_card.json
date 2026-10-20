@@ -1,0 +1,46 @@
+{
+  "model_name": "MedAI Multi-Task Cardiovascular & Diabetes Screener",
+  "version": "2.0.0",
+  "architecture": "Feedforward MLP [13 -> 32 -> 16 -> 2 heads (chd, diabetes)]",
+  "activation": "Swish",
+  "optimizer": "Adam (lr=0.005, beta1=0.9, beta2=0.999, eps=1e-8, grad_clip=5.0)",
+  "regularization": "Inverted Dropout (0.1) + L2 (1e-4)",
+  "training_framework": "Pure NumPy implementation",
+  "trained_date": "2026-10-20T11:49:54.758180",
+  "dataset": {
+    "name": "Framingham Heart Study (Public Educational Cohort)",
+    "sha256": "2c0e57dc0361b420becf1facec0a054af06c420eae0ae2faf0fdc8591fadb018",
+    "train_samples": 2968,
+    "val_samples": 636,
+    "test_samples": 636,
+    "features_count": 13,
+    "features_list": [
+      "male",
+      "age",
+      "currentSmoker",
+      "cigsPerDay",
+      "BPMeds",
+      "prevalentStroke",
+      "prevalentHyp",
+      "totChol",
+      "sysBP",
+      "diaBP",
+      "BMI",
+      "heartRate",
+      "glucose"
+    ]
+  },
+  "performance_summary": {
+    "chd_roc_auc": 0.6752,
+    "chd_auc_ci_95": [
+      0.6069,
+      0.7346
+    ],
+    "diabetes_roc_auc": 0.8836,
+    "diabetes_auc_ci_95": [
+      0.7382,
+      0.9977
+    ]
+  },
+  "intended_use": "Screening and health education tool for 10-year coronary heart disease risk and current diabetes status. Research prototype not intended for autonomous medical diagnosis."
+}

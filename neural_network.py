@@ -1,397 +1,407 @@
+"""
+Multi-Task Neural Network in pure NumPy for cardiovascular and diabetes screening.
+Architecture: Shared representation backbone with 2 classification heads (chd, diabetes).
+Optimized with mini-batch Adam, inverted dropout, gradient clipping, and analytical input gradients.
+"""
+from datetime import datetime
+import json
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple, Union, Any
 import numpy as np
 
-# Loss scaling weights to balance classification BCE and regression MSE magnitudes
-LOSS_WEIGHTS = {
-    "cardiac": 1.0,
-    "diabetes": 1.0,
-    "life": 0.005,
-    "vascular": 0.005,
-}
+def sigmoid(x: np.ndarray) -> np.ndarray:
+    x_clipped = np.clip(x, -50.0, 50.0)
+    return 1.0 / (1.0 + np.exp(-x_clipped))
 
-# Hyperparameters for Adam optimizer and gradient clipping
-ADAM_BETA1 = 0.9
-ADAM_BETA2 = 0.999
-ADAM_EPS = 1e-8
-GRAD_CLIP = 2.0
-
-def sigmoid(x):
-    # Clip input to prevent floating point overflow in exp
-    x = np.clip(x, -500, 500)
-    return 1.0 / (1.0 + np.exp(-x))
-
-def sigmoid_deriv(a):
-    return a * (1.0 - a)
-
-def swish(x):
+def swish(x: np.ndarray) -> np.ndarray:
     return x * sigmoid(x)
 
-def swish_deriv(x):
+def swish_deriv(x: np.ndarray) -> np.ndarray:
     s = sigmoid(x)
     return s + x * s * (1.0 - s)
 
 class MultiTaskNeuralNetwork:
     """
-    Multi-task deep neural network implemented in pure NumPy.
-    Shared hidden layers learn joint biomarker representations before splitting
-    into 4 task-specific output heads (2 classification, 2 regression).
+    Pure NumPy Multi-Task Neural Network with classification heads for CHD and Diabetes.
     """
-
-    def __init__(self, input_dim=10, hidden_sizes=None, learning_rate=0.02, l2_reg=1e-4, seed=42):
-        if hidden_sizes is None:
-            hidden_sizes = [20, 12]
-        self.input_dim = input_dim
+    def __init__(
+        self,
+        input_dim: int = 13,
+        hidden_sizes: Union[List[int], Tuple[int, ...]] = (32, 16),
+        heads: Union[List[str], Tuple[str, ...]] = ("chd", "diabetes"),
+        dropout: float = 0.1,
+        l2_reg: float = 1e-4,
+        lr: float = 0.005,
+        seed: int = 42
+    ):
+        self.input_dim = int(input_dim)
         self.hidden_sizes = list(hidden_sizes)
-        self.act_func = swish
-        self.act_deriv = swish_deriv
-        self.learning_rate = learning_rate
-        self.l2_reg = l2_reg
+        self.heads = list(heads)
+        self.dropout_rate = float(dropout)
+        self.l2_reg = float(l2_reg)
+        self.lr = float(lr)
+        self.seed = int(seed)
 
-        rng = np.random.default_rng(seed)
+        self.rng = np.random.default_rng(self.seed)
 
-        # Shared feature extraction backbone
-        self.W_shared = []
-        self.b_shared = []
-        self.m_w_shared, self.v_w_shared = [], []
-        self.m_b_shared, self.v_b_shared = [], []
-
-        prev_dim = input_dim
-        for h_dim in hidden_sizes:
-            # He normal initialization tuned for Swish activation
-            scale = np.sqrt(2.0 / prev_dim)
-            W = rng.standard_normal((prev_dim, h_dim)) * scale
-            b = np.zeros((1, h_dim))
-
+        # Shared layers
+        self.W_shared: List[np.ndarray] = []
+        self.b_shared: List[np.ndarray] = []
+        prev_dim = self.input_dim
+        for h_dim in self.hidden_sizes:
+            # He normal initialization for Swish
+            std = np.sqrt(2.0 / prev_dim)
+            W = self.rng.normal(0.0, std, (prev_dim, h_dim)).astype(np.float64)
+            b = np.zeros((1, h_dim), dtype=np.float64)
             self.W_shared.append(W)
             self.b_shared.append(b)
-            self.m_w_shared.append(np.zeros_like(W))
-            self.v_w_shared.append(np.zeros_like(W))
-            self.m_b_shared.append(np.zeros_like(b))
-            self.v_b_shared.append(np.zeros_like(b))
             prev_dim = h_dim
 
-        last_hidden_dim = prev_dim
+        # Classification heads (each outputs a single logit for sigmoid)
+        self.W_heads: Dict[str, np.ndarray] = {}
+        self.b_heads: Dict[str, np.ndarray] = {}
+        last_hidden = prev_dim
+        for head in self.heads:
+            std = np.sqrt(2.0 / last_hidden)
+            W_h = self.rng.normal(0.0, std, (last_hidden, 1)).astype(np.float64)
+            b_h = np.zeros((1, 1), dtype=np.float64)
+            self.W_heads[head] = W_h
+            self.b_heads[head] = b_h
 
-        # Specialized output heads for multi-task predictions
-        self.W_heads = {}
-        self.b_heads = {}
-        self.m_w_heads, self.v_w_heads = {}, {}
-        self.m_b_heads, self.v_b_heads = {}, {}
-
-        for head in ["cardiac", "diabetes", "life", "vascular"]:
-            W = rng.standard_normal((last_hidden_dim, 1)) * np.sqrt(1.0 / last_hidden_dim)
-            b = np.zeros((1, 1))
-            # Pre-bias regression heads to population averages for faster convergence
-            if head == "life":
-                b[0, 0] = 78.0
-            elif head == "vascular":
-                b[0, 0] = 50.0
-
-            self.W_heads[head] = W
-            self.b_heads[head] = b
-            self.m_w_heads[head] = np.zeros_like(W)
-            self.v_w_heads[head] = np.zeros_like(W)
-            self.m_b_heads[head] = np.zeros_like(b)
-            self.v_b_heads[head] = np.zeros_like(b)
-
+        # Adam optimizer state
         self.t = 0
-        self.activations = []
-        self.z_values = []
+        self.mW_shared = [np.zeros_like(W) for W in self.W_shared]
+        self.vW_shared = [np.zeros_like(W) for W in self.W_shared]
+        self.mb_shared = [np.zeros_like(b) for b in self.b_shared]
+        self.vb_shared = [np.zeros_like(b) for b in self.b_shared]
 
-    def forward(self, X):
-        self.activations = [X]
-        self.z_values = []
+        self.mW_heads = {h: np.zeros_like(W) for h, W in self.W_heads.items()}
+        self.vW_heads = {h: np.zeros_like(W) for h, W in self.W_heads.items()}
+        self.mb_heads = {h: np.zeros_like(b) for h, b in self.b_heads.items()}
+        self.vb_heads = {h: np.zeros_like(b) for h, b in self.b_heads.items()}
 
-        curr_A = X
+        # Stored normalization metadata
+        self.metadata: Dict[str, Any] = {}
+
+    def forward(
+        self,
+        X: np.ndarray,
+        training: bool = False
+    ) -> Tuple[Dict[str, np.ndarray], List[np.ndarray], List[np.ndarray], List[np.ndarray]]:
+        """
+        Forward pass.
+        Returns:
+            probs: Dict[head -> probabilities (m, 1)]
+            activations: list of activations including input
+            z_values: list of pre-activations
+            drop_masks: list of dropout masks used
+        """
+        curr_A = np.asarray(X, dtype=np.float64)
+        if curr_A.ndim == 1:
+            curr_A = curr_A.reshape(1, -1)
+
+        activations = [curr_A]
+        z_values = []
+        drop_masks = []
+
         for i in range(len(self.hidden_sizes)):
             W = self.W_shared[i]
             b = self.b_shared[i]
             Z = np.dot(curr_A, W) + b
-            self.z_values.append(Z)
-            curr_A = self.act_func(Z)
-            self.activations.append(curr_A)
+            z_values.append(Z)
+            A = swish(Z)
 
-        latent_features = curr_A
+            if training and self.dropout_rate > 0.0:
+                keep_prob = 1.0 - self.dropout_rate
+                mask = (self.rng.uniform(0.0, 1.0, size=A.shape) < keep_prob).astype(np.float32) / keep_prob
+                A = A * mask
+                drop_masks.append(mask)
+            else:
+                drop_masks.append(None)
 
-        z_cardiac = np.dot(latent_features, self.W_heads["cardiac"]) + self.b_heads["cardiac"]
-        p_cardiac = sigmoid(z_cardiac)
+            curr_A = A
+            activations.append(curr_A)
 
-        z_diabetes = np.dot(latent_features, self.W_heads["diabetes"]) + self.b_heads["diabetes"]
-        p_diabetes = sigmoid(z_diabetes)
+        latent = curr_A
+        probs = {}
+        for head in self.heads:
+            Z_h = np.dot(latent, self.W_heads[head]) + self.b_heads[head]
+            p_h = sigmoid(Z_h)
+            probs[head] = p_h
 
-        z_life = np.dot(latent_features, self.W_heads["life"]) + self.b_heads["life"]
-        pred_life = z_life
+        return probs, activations, z_values, drop_masks
 
-        z_vascular = np.dot(latent_features, self.W_heads["vascular"]) + self.b_heads["vascular"]
-        pred_vascular = z_vascular
+    def predict(self, X: np.ndarray) -> Dict[str, np.ndarray]:
+        """
+        Deterministic inference.
+        """
+        probs, _, _, _ = self.forward(X, training=False)
+        return probs
 
-        return {
-            "cardiac": p_cardiac,
-            "diabetes": p_diabetes,
-            "life": pred_life,
-            "vascular": pred_vascular,
-            "latent": latent_features
-        }
+    def predict_with_uncertainty(
+        self,
+        X: np.ndarray,
+        n_mc: int = 30,
+        seed: int = 42
+    ) -> Dict[str, Dict[str, np.ndarray]]:
+        """
+        Monte Carlo Dropout inference for epistemic uncertainty estimation.
+        Returns:
+            {head: {"mean": np.ndarray, "std": np.ndarray}}
+        """
+        old_state = self.rng.bit_generator.state
+        self.rng = np.random.default_rng(seed)
 
-    def _adam_update(self, param, grad, m_buf, v_buf):
+        accum = {h: [] for h in self.heads}
+        for _ in range(n_mc):
+            probs, _, _, _ = self.forward(X, training=True)
+            for h in self.heads:
+                accum[h].append(probs[h])
 
-        m_buf = ADAM_BETA1 * m_buf + (1 - ADAM_BETA1) * grad
-        v_buf = ADAM_BETA2 * v_buf + (1 - ADAM_BETA2) * (grad ** 2)
-        m_corr = m_buf / (1 - ADAM_BETA1 ** self.t)
-        v_corr = v_buf / (1 - ADAM_BETA2 ** self.t)
-        param -= self.learning_rate * m_corr / (np.sqrt(v_corr) + ADAM_EPS)
-        return param, m_buf, v_buf
+        # Restore RNG state
+        self.rng.bit_generator.state = old_state
 
-    def train_step(self, X, y_cardiac, y_diabetes, y_life, y_vascular, dropout_rate=0.1):
-        m = X.shape[0]
-        self.t += 1
+        result = {}
+        for h in self.heads:
+            stacked = np.array(accum[h])  # shape (n_mc, N, 1)
+            result[h] = {
+                "mean": np.mean(stacked, axis=0),
+                "std": np.std(stacked, axis=0)
+            }
+        return result
 
-        self.activations = [X]
-        self.z_values = []
-        self.dropout_masks = []
+    def integrated_gradients(
+        self,
+        x: np.ndarray,
+        baseline: np.ndarray,
+        head: str = "chd",
+        m_steps: int = 50
+    ) -> np.ndarray:
+        """
+        Computes path-integrated gradients attribution vector from baseline to x.
+        Completeness property: sum(attributions) approx p(x) - p(baseline).
+        """
+        x_in = np.asarray(x, dtype=np.float64).ravel()
+        base_in = np.asarray(baseline, dtype=np.float64).ravel()
+        diff = x_in - base_in
 
-        curr_A = X
-        for i in range(len(self.hidden_sizes)):
-            W = self.W_shared[i]
-            b = self.b_shared[i]
-            Z = np.dot(curr_A, W) + b
-            self.z_values.append(Z)
-            A = self.act_func(Z)
+        # Accumulate gradients along linear path
+        grads = []
+        for k in range(1, m_steps + 1):
+            alpha = k / float(m_steps)
+            step_x = base_in + alpha * diff
+            g = self.input_gradient(step_x, head=head)
+            grads.append(g)
 
-            mask = (np.random.uniform(0, 1, size=A.shape) >= dropout_rate).astype(float)
-            curr_A = (A * mask) / (1.0 - dropout_rate)
+        avg_grad = np.mean(grads, axis=0)
+        attributions = diff * avg_grad
+        return attributions
 
-            self.dropout_masks.append(mask)
-            self.activations.append(curr_A)
 
-        latent_features = curr_A
+    def compute_loss(
+        self,
+        probs: Dict[str, np.ndarray],
+        targets: Dict[str, np.ndarray],
+        loss_weights: Optional[Dict[str, float]] = None
+    ) -> float:
+        """
+        Computes total loss (BCE + L2 regularization).
+        """
+        if loss_weights is None:
+            loss_weights = {h: 1.0 for h in self.heads}
 
-        z_cardiac = np.dot(latent_features, self.W_heads["cardiac"]) + self.b_heads["cardiac"]
-        preds_cardiac = sigmoid(z_cardiac)
+        total_loss = 0.0
+        eps = 1e-7
 
-        z_diabetes = np.dot(latent_features, self.W_heads["diabetes"]) + self.b_heads["diabetes"]
-        preds_diabetes = sigmoid(z_diabetes)
+        for head in self.heads:
+            if head in targets:
+                p = np.clip(probs[head], eps, 1.0 - eps)
+                y = targets[head].reshape(-1, 1)
+                bce = -np.mean(y * np.log(p) + (1.0 - y) * np.log(1.0 - p))
+                total_loss += loss_weights.get(head, 1.0) * float(bce)
 
-        preds_life = np.dot(latent_features, self.W_heads["life"]) + self.b_heads["life"]
-        preds_vascular = np.dot(latent_features, self.W_heads["vascular"]) + self.b_heads["vascular"]
+        # L2 Regularization
+        if self.l2_reg > 0.0:
+            l2_sum = sum(np.sum(W ** 2) for W in self.W_shared)
+            l2_sum += sum(np.sum(W ** 2) for W in self.W_heads.values())
+            total_loss += 0.5 * self.l2_reg * float(l2_sum)
 
-        preds = {
-            "cardiac": preds_cardiac,
-            "diabetes": preds_diabetes,
-            "life": preds_life,
-            "vascular": preds_vascular
-        }
+        return float(total_loss)
 
-        latent_A = self.activations[-1]
+    def train_step(
+        self,
+        X_batch: np.ndarray,
+        y_batch: Dict[str, np.ndarray],
+        loss_weights: Optional[Dict[str, float]] = None
+    ) -> float:
+        """
+        Executes one mini-batch training step with backpropagation and Adam update.
+        """
+        if loss_weights is None:
+            loss_weights = {h: 1.0 for h in self.heads}
 
-        dZ_cardiac = LOSS_WEIGHTS["cardiac"] * (preds["cardiac"] - y_cardiac)
-        dZ_diabetes = LOSS_WEIGHTS["diabetes"] * (preds["diabetes"] - y_diabetes)
-        dZ_life = LOSS_WEIGHTS["life"] * 2.0 * (preds["life"] - y_life) / m
-        dZ_vascular = LOSS_WEIGHTS["vascular"] * 2.0 * (preds["vascular"] - y_vascular) / m
+        m = len(X_batch)
+        probs, activations, z_values, drop_masks = self.forward(X_batch, training=True)
+        loss = self.compute_loss(probs, y_batch, loss_weights)
 
-        dZ_heads = {
-            "cardiac": dZ_cardiac,
-            "diabetes": dZ_diabetes,
-            "life": dZ_life,
-            "vascular": dZ_vascular
-        }
+        # Backpropagation: Classification heads
+        dW_heads = {}
+        db_heads = {}
+        dA_latent = np.zeros_like(activations[-1])
 
-        dA_latent = np.zeros_like(latent_A)
+        for head in self.heads:
+            if head in y_batch:
+                y = y_batch[head].reshape(-1, 1)
+                w_loss = loss_weights.get(head, 1.0)
+                # For Sigmoid + BCE: dZ = (p - y)
+                dZ_h = (probs[head] - y) * w_loss
+                dW_heads[head] = (np.dot(activations[-1].T, dZ_h) / m) + self.l2_reg * self.W_heads[head]
+                db_heads[head] = np.mean(dZ_h, axis=0, keepdims=True)
+                dA_latent += np.dot(dZ_h, self.W_heads[head].T)
 
-        for head in ["cardiac", "diabetes", "life", "vascular"]:
-            dZ = dZ_heads[head]
-            dW = (1.0 / m) * np.dot(latent_A.T, dZ) + self.l2_reg * self.W_heads[head]
-            db = (1.0 / m) * np.sum(dZ, axis=0, keepdims=True)
-
-            dW = np.clip(dW, -GRAD_CLIP, GRAD_CLIP)
-            db = np.clip(db, -GRAD_CLIP, GRAD_CLIP)
-
-            dA_latent += np.dot(dZ, self.W_heads[head].T)
-
-            self.W_heads[head], self.m_w_heads[head], self.v_w_heads[head] = self._adam_update(
-                self.W_heads[head], dW, self.m_w_heads[head], self.v_w_heads[head])
-            self.b_heads[head], self.m_b_heads[head], self.v_b_heads[head] = self._adam_update(
-                self.b_heads[head], db, self.m_b_heads[head], self.v_b_heads[head])
-
-        dZ = dA_latent * (self.dropout_masks[-1] / (1.0 - dropout_rate)) * self.act_deriv(self.z_values[-1])
+        # Backpropagation: Shared layers
+        dW_shared = []
+        db_shared = []
+        curr_dA = dA_latent
 
         for i in reversed(range(len(self.hidden_sizes))):
-            A_prev = self.activations[i]
-            dW = (1.0 / m) * np.dot(A_prev.T, dZ) + self.l2_reg * self.W_shared[i]
-            db = (1.0 / m) * np.sum(dZ, axis=0, keepdims=True)
+            mask = drop_masks[i]
+            if mask is not None:
+                curr_dA = curr_dA * mask
 
-            dW = np.clip(dW, -GRAD_CLIP, GRAD_CLIP)
-            db = np.clip(db, -GRAD_CLIP, GRAD_CLIP)
+            Z = z_values[i]
+            dZ = curr_dA * swish_deriv(Z)
+            prev_A = activations[i]
 
-            if i > 0:
-                dA_prev = np.dot(dZ, self.W_shared[i].T)
-                dZ = dA_prev * (self.dropout_masks[i - 1] / (1.0 - dropout_rate)) * self.act_deriv(self.z_values[i - 1])
+            dW = (np.dot(prev_A.T, dZ) / m) + self.l2_reg * self.W_shared[i]
+            db = np.mean(dZ, axis=0, keepdims=True)
 
-            self.W_shared[i], self.m_w_shared[i], self.v_w_shared[i] = self._adam_update(
-                self.W_shared[i], dW, self.m_w_shared[i], self.v_w_shared[i])
-            self.b_shared[i], self.m_b_shared[i], self.v_b_shared[i] = self._adam_update(
-                self.b_shared[i], db, self.m_b_shared[i], self.v_b_shared[i])
+            dW_shared.insert(0, dW)
+            db_shared.insert(0, db)
 
-        eps_log = 1e-15
-        loss_cardiac = -np.mean(y_cardiac * np.log(preds["cardiac"] + eps_log) + (1 - y_cardiac) * np.log(1 - preds["cardiac"] + eps_log))
-        loss_diabetes = -np.mean(y_diabetes * np.log(preds["diabetes"] + eps_log) + (1 - y_diabetes) * np.log(1 - preds["diabetes"] + eps_log))
-        loss_life = np.mean((preds["life"] - y_life) ** 2)
-        loss_vascular = np.mean((preds["vascular"] - y_vascular) ** 2)
+            curr_dA = np.dot(dZ, self.W_shared[i].T)
 
-        total_loss = float(
-            LOSS_WEIGHTS["cardiac"] * loss_cardiac +
-            LOSS_WEIGHTS["diabetes"] * loss_diabetes +
-            LOSS_WEIGHTS["life"] * loss_life +
-            LOSS_WEIGHTS["vascular"] * loss_vascular
-        )
-        return total_loss
+        # Adam optimizer update with gradient clipping
+        self.t += 1
+        beta1, beta2, eps = 0.9, 0.999, 1e-8
+        grad_clip = 5.0
 
-    def get_feature_attributions(self, X_vec):
+        # Update shared layers
+        for i in range(len(self.hidden_sizes)):
+            gW = np.clip(dW_shared[i], -grad_clip, grad_clip)
+            gb = np.clip(db_shared[i], -grad_clip, grad_clip)
 
-        baseline = np.zeros_like(X_vec)
-        steps = 50
+            self.mW_shared[i] = beta1 * self.mW_shared[i] + (1 - beta1) * gW
+            self.vW_shared[i] = beta2 * self.vW_shared[i] + (1 - beta2) * (gW ** 2)
+            self.mb_shared[i] = beta1 * self.mb_shared[i] + (1 - beta1) * gb
+            self.vb_shared[i] = beta2 * self.vb_shared[i] + (1 - beta2) * (gb ** 2)
 
-        scaled_inputs = [baseline + (float(i) / steps) * (X_vec - baseline) for i in range(steps + 1)]
-        grads = []
-        eps = 1e-4
+            m_hat_w = self.mW_shared[i] / (1 - beta1 ** self.t)
+            v_hat_w = self.vW_shared[i] / (1 - beta2 ** self.t)
+            m_hat_b = self.mb_shared[i] / (1 - beta1 ** self.t)
+            v_hat_b = self.vb_shared[i] / (1 - beta2 ** self.t)
 
-        for x_curr in scaled_inputs:
-            grad_curr = []
-            for feat_idx in range(x_curr.shape[1]):
-                x_plus = x_curr.copy()
-                x_minus = x_curr.copy()
-                x_plus[0, feat_idx] += eps
-                x_minus[0, feat_idx] -= eps
+            self.W_shared[i] -= self.lr * m_hat_w / (np.sqrt(v_hat_w) + eps)
+            self.b_shared[i] -= self.lr * m_hat_b / (np.sqrt(v_hat_b) + eps)
 
-                p_plus = float(self.forward(x_plus)["cardiac"][0, 0])
-                p_minus = float(self.forward(x_minus)["cardiac"][0, 0])
-                grad_curr.append((p_plus - p_minus) / (2 * eps))
-            grads.append(grad_curr)
+        # Update heads
+        for head in self.heads:
+            if head in dW_heads:
+                gW = np.clip(dW_heads[head], -grad_clip, grad_clip)
+                gb = np.clip(db_heads[head], -grad_clip, grad_clip)
 
-        avg_grads = np.mean(grads, axis=0)
-        integrated_grad = (X_vec[0] - baseline[0]) * avg_grads
-        total = np.sum(np.abs(integrated_grad)) + 1e-8
-        percentages = (np.abs(integrated_grad) / total) * 100.0
-        return percentages
+                self.mW_heads[head] = beta1 * self.mW_heads[head] + (1 - beta1) * gW
+                self.vW_heads[head] = beta2 * self.vW_heads[head] + (1 - beta2) * (gW ** 2)
+                self.mb_heads[head] = beta1 * self.mb_heads[head] + (1 - beta1) * gb
+                self.vb_heads[head] = beta2 * self.vb_heads[head] + (1 - beta2) * (gb ** 2)
 
-    def get_stage_features(self, X):
-        preds = self.forward(X)
-        return {
-            "stage1_input": X,
-            "stage2_latent": preds["latent"],
-            "all_hidden": self.activations[1:],
-            "stage3_outputs": preds
-        }
+                m_hat_w = self.mW_heads[head] / (1 - beta1 ** self.t)
+                v_hat_w = self.vW_heads[head] / (1 - beta2 ** self.t)
+                m_hat_b = self.mb_heads[head] / (1 - beta1 ** self.t)
+                v_hat_b = self.vb_heads[head] / (1 - beta2 ** self.t)
 
-    def save_weights(self, filepath):
+                self.W_heads[head] -= self.lr * m_hat_w / (np.sqrt(v_hat_w) + eps)
+                self.b_heads[head] -= self.lr * m_hat_b / (np.sqrt(v_hat_b) + eps)
+
+        return loss
+
+    def input_gradient(self, x: np.ndarray, head: str = "chd") -> np.ndarray:
+        """
+        Computes the analytical gradient of the output probability p(x) with respect
+        to input features x (shape 1, input_dim).
+        Returns gradient vector of shape (input_dim,).
+        """
+        x_in = np.asarray(x, dtype=np.float32).reshape(1, -1)
+        probs, activations, z_values, _ = self.forward(x_in, training=False)
+
+        p = probs[head][0, 0]
+        # dp/dZ_head = p * (1 - p)
+        dZ_head = p * (1.0 - p)
+
+        curr_dA = dZ_head * self.W_heads[head].T  # shape (1, last_hidden)
+
+        for i in reversed(range(len(self.hidden_sizes))):
+            Z = z_values[i]
+            dZ = curr_dA * swish_deriv(Z)
+            curr_dA = np.dot(dZ, self.W_shared[i].T)
+
+        return curr_dA.ravel().astype(np.float64)
+
+    def save(self, filepath: Union[str, Path], metadata: Optional[Dict[str, Any]] = None):
+        """
+        Saves network weights, architecture, and normalization metadata to .npz without pickle.
+        """
+        path = Path(filepath)
+        path.parent.mkdir(parents=True, exist_ok=True)
 
         save_dict = {
+            "format_version": np.array("2.0"),
             "input_dim": np.array(self.input_dim),
             "hidden_sizes": np.array(self.hidden_sizes),
-            "learning_rate": np.array(self.learning_rate),
-            "l2_reg": np.array(self.l2_reg),
-            "t": np.array(self.t),
+            "heads": np.array(self.heads),
+            "num_shared_layers": np.array(len(self.W_shared)),
+            "created_at": np.array(datetime.now().isoformat()),
         }
+
         for i, (W, b) in enumerate(zip(self.W_shared, self.b_shared)):
             save_dict[f"W_shared_{i}"] = W
             save_dict[f"b_shared_{i}"] = b
-            save_dict[f"m_w_shared_{i}"] = self.m_w_shared[i]
-            save_dict[f"v_w_shared_{i}"] = self.v_w_shared[i]
-            save_dict[f"m_b_shared_{i}"] = self.m_b_shared[i]
-            save_dict[f"v_b_shared_{i}"] = self.v_b_shared[i]
 
-        for head in ["cardiac", "diabetes", "life", "vascular"]:
+        for head in self.heads:
             save_dict[f"W_head_{head}"] = self.W_heads[head]
             save_dict[f"b_head_{head}"] = self.b_heads[head]
-            save_dict[f"m_w_head_{head}"] = self.m_w_heads[head]
-            save_dict[f"v_w_head_{head}"] = self.v_w_heads[head]
-            save_dict[f"m_b_head_{head}"] = self.m_b_heads[head]
-            save_dict[f"v_b_head_{head}"] = self.v_b_heads[head]
 
-        np.savez_compressed(filepath, **save_dict)
+        meta = metadata if metadata is not None else self.metadata
+        if meta:
+            save_dict["metadata_json"] = np.array(json.dumps(meta, ensure_ascii=False))
 
-    def load_weights(self, filepath):
-
-        data = np.load(filepath, allow_pickle=False)
-        self.input_dim = int(data["input_dim"])
-        self.hidden_sizes = list(data["hidden_sizes"])
-        self.learning_rate = float(data["learning_rate"])
-        self.l2_reg = float(data["l2_reg"])
-        self.t = int(data["t"])
-
-        self.W_shared = []
-        self.b_shared = []
-        self.m_w_shared, self.v_w_shared = [], []
-        self.m_b_shared, self.v_b_shared = [], []
-
-        for i in range(len(self.hidden_sizes)):
-            self.W_shared.append(data[f"W_shared_{i}"])
-            self.b_shared.append(data[f"b_shared_{i}"])
-            self.m_w_shared.append(data[f"m_w_shared_{i}"])
-            self.v_w_shared.append(data[f"v_w_shared_{i}"])
-            self.m_b_shared.append(data[f"m_b_shared_{i}"])
-            self.v_b_shared.append(data[f"v_b_shared_{i}"])
-
-        for head in ["cardiac", "diabetes", "life", "vascular"]:
-            self.W_heads[head] = data[f"W_head_{head}"]
-            self.b_heads[head] = data[f"b_head_{head}"]
-            self.m_w_heads[head] = data[f"m_w_head_{head}"]
-            self.v_w_heads[head] = data[f"v_w_head_{head}"]
-            self.m_b_heads[head] = data[f"m_b_head_{head}"]
-            self.v_b_heads[head] = data[f"v_b_head_{head}"]
+        np.savez_compressed(path, **save_dict)
 
     @classmethod
-    def load_model(cls, filepath):
+    def load(cls, filepath: Union[str, Path]) -> "MultiTaskNeuralNetwork":
+        """
+        Loads network weights and metadata from .npz with allow_pickle=False.
+        """
+        path = Path(filepath)
+        if not path.exists():
+            raise FileNotFoundError(f"Weights file not found: {path}")
 
-        data = np.load(filepath, allow_pickle=False)
-        hidden_sizes = list(data["hidden_sizes"])
-        lr = float(data["learning_rate"])
-        l2 = float(data["l2_reg"])
-        inp = int(data["input_dim"])
-        nn = cls(input_dim=inp, hidden_sizes=hidden_sizes, learning_rate=lr, l2_reg=l2)
-        nn.load_weights(filepath)
-        return nn
+        with np.load(path, allow_pickle=False) as data:
+            input_dim = int(data["input_dim"])
+            hidden_sizes = [int(x) for x in data["hidden_sizes"]]
+            heads = [str(x) for x in data["heads"]]
 
-    def predict_with_uncertainty(self, X, n_samples=30, dropout_rate=0.1, seed=42):
+            model = cls(input_dim=input_dim, hidden_sizes=hidden_sizes, heads=heads)
 
-        rng = np.random.default_rng(seed)
-        c_list, d_list, l_list, v_list = [], [], [], []
+            num_shared = int(data["num_shared_layers"])
+            model.W_shared = [data[f"W_shared_{i}"].copy() for i in range(num_shared)]
+            model.b_shared = [data[f"b_shared_{i}"].copy() for i in range(num_shared)]
 
-        for _ in range(n_samples):
+            for head in heads:
+                model.W_heads[head] = data[f"W_head_{head}"].copy()
+                model.b_heads[head] = data[f"b_head_{head}"].copy()
 
-            curr_A = X
-            for i in range(len(self.hidden_sizes)):
-                Z = np.dot(curr_A, self.W_shared[i]) + self.b_shared[i]
-                curr_A = self.act_func(Z)
-                mask = (rng.uniform(0, 1, size=curr_A.shape) >= dropout_rate).astype(float)
-                curr_A = (curr_A * mask) / (1.0 - dropout_rate)
+            if "metadata_json" in data:
+                model.metadata = json.loads(str(data["metadata_json"]))
 
-            latent = curr_A
-            p_c = sigmoid(np.dot(latent, self.W_heads["cardiac"]) + self.b_heads["cardiac"])
-            p_d = sigmoid(np.dot(latent, self.W_heads["diabetes"]) + self.b_heads["diabetes"])
-            pred_l = np.dot(latent, self.W_heads["life"]) + self.b_heads["life"]
-            pred_v = np.dot(latent, self.W_heads["vascular"]) + self.b_heads["vascular"]
-
-            c_list.append(p_c)
-            d_list.append(p_d)
-            l_list.append(pred_l)
-            v_list.append(pred_v)
-
-        c_arr = np.array(c_list)
-        d_arr = np.array(d_list)
-        l_arr = np.array(l_list)
-        v_arr = np.array(v_list)
-
-        results = {}
-        for head, arr in [("cardiac", c_arr), ("diabetes", d_arr), ("life", l_arr), ("vascular", v_arr)]:
-            mean = np.mean(arr, axis=0)
-            std = np.std(arr, axis=0)
-            ci95 = 1.96 * std
-            results[head] = {
-                "mean": mean,
-                "std": std,
-                "ci95": ci95,
-                "low95": mean - ci95,
-                "high95": mean + ci95
-            }
-        return results
-
+        return model

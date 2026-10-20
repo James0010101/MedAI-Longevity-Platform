@@ -143,7 +143,11 @@ def calculate_heart_age(
     # Return numerical heart age clipped to physiological limits
     return min(95.0, max(18.0, heart_age_raw))
 
+# Convenient alias
+calculate_framingham_heart_age = calculate_heart_age
+
 # Cache WHO life table in memory
+
 _WHO_LIFE_TABLE = None
 
 def _load_who_table() -> pd.DataFrame:
@@ -204,3 +208,12 @@ def calculate_life_expectancy_estimate(
         "baseline_remaining": round(baseline_remaining, 1),
         "adjusted_remaining": round(adjusted_remaining, 1),
     }
+
+def calculate_uzbekistan_life_expectancy(
+    age: float,
+    sex: Union[int, str],
+    heart_age: float
+) -> float:
+    """Convenience helper returning life_estimate scalar."""
+    return calculate_life_expectancy_estimate(age, sex, heart_age)["life_estimate"]
+
