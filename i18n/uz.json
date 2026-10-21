@@ -244,11 +244,11 @@
   "report_disclaimer_text": "Ushbu hisobot MedAI Longevity Platform tadqiqot tizimi tomonidan avtomatik yaratilgan. Skrining natijalari faqat axborot-ma'rifiy xarakterga ega bo'lib, klinik tashxis hisoblanmaydi va shifokor ko'rigini talab etadi.",
   "report_print_btn": "Hisobotni chop etish (A4)",
   "about_author_title": "🎓 Startap muallifi",
-  "about_author_name": "**Muallif / talaba F.I.SH.:** *Sadullayev Jahongir Uktamovich*",
-  "about_author_inst": "**O'quv muassasasi:** *Mirzo Ulug'bek nomidagi ixtisoslashtirilgan maktab*",
+  "about_author_name": "**Muallif F.I.SH.:** Sa'dullayev Jahongir Uktamovich",
+  "about_author_inst": "**Ta'lim muassasasi:** Mirzo Ulug'bek nomidagi ixtisoslashtirilgan maktab",
   "about_author_field": "**Yo'nalish:** Tibbiyot informatikasi / Sun'iy intellekt / Data Science",
-  "about_mentor_title": "🔬 Ilmiy rahbar / Murabbiy",
-  "about_mentor_repo": "**Loyiha repozitoriysi:** [GitHub / Very-good-project](https://github.com/James0010101/Very-good-project)",
+  "about_mentor_title": "📌 Loyiha formati va repozitoriy",
+  "about_mentor_repo": "**Loyiha repozitoriysi:** [GitHub / MedAI-Longevity-Platform](https://github.com/James0010101/MedAI-Longevity-Platform)",
   "meth_cohort_desc": "**O'qitish kohortasi:** Framingham Heart Study (AQSH Milliy yurak, o'pka va qon instituti — NHLBI tomonidan tasdiqlangan ochiq ilmiy kohorta).\n- **Umumiy tanlanma hajmi:** 4 240 ishtirokchi, 16 ta boshlang'ich klinik belgi.\n- **Stratifikatsiyalangan taqsimot:** 70% Train (2 968 kishi), 15% Validation (636 kishi), 15% Test (636 kishi).\n- **Testdagi natijalar tarqalishi:** YuIK (10 yillik xavf) — **15.25%**, qandli diabet — **2.83%**.\n- **Birlamchi ishlov berish:** Yetishmayotgan ma'lumotlarni medianalar bilan to'ldirish, Z-score standartlashtirish.\n- **Klinik cheklov:** Framingham populyatsiyasini aks ettiradi. O'zbekiston sog'liqni saqlash tizimida qo'llash uchun mahalliy kalibratsiya talab etiladi.",
   "meth_clinical_desc": "**1. Yurak-qon tomir yoshi formulasi (D'Agostino et al., Circulation 2008):**\nKoks regressiyasiga asoslangan qat'iy analitik formula:\n$$\\text{Heart Age} = \\exp\\left(\\frac{L_{\\text{patient}} - C_{\\text{ref}}}{\\beta_{\\text{age}}}\\right)$$\nHar qanday yoshdagi ideal profil uchun matematik jihatdan isbotlangan: $\\text{Heart Age} \\equiv \\text{Chronological Age}$.\n\n**2. O'zbekiston uchun JSST jadvallari bo'yicha umr davomiyligini baholash (2023):**\n$$\\text{Kutilayotgan umr} = \\text{Yosh} + e_x(\\text{Heart Age})$$\nbu yerda $e_x$ — O'zbekiston Respublikasi bo'yicha JSSTning rasmiy o'lim jadvalidagi qolgan umr ko'rish davomiyligi.",
   "meth_limits_desc": "- **Mahalliy kohorta tadqiqotlarining yo'qligi:** O'qitish Framingham (AQSH) kohortasida amalga oshirilgan. O'zbekiston amaliyotiga to'liq tatbiq etish uchun mahalliy tanlanma kerak.\n- **Lipid panelining cheklanganligi:** O'quv kohortasida faqat umumiy xolesterin mavjud, ZPPL va triglitseridlar alohida kiritilmagan.\n- **Skrining maqomi:** Tizim xavflarni tabaqalashtirish va aholi savodxonligini oshirish uchun mo'ljallangan, shifokor ko'rigi o'rnini bosa olmaydi.",
@@ -285,6 +285,6 @@
   "bio_smoker_val": "Chekadi ({cigs} sig/kun)",
   "bio_nonsmoker_val": "Chekmaydi",
   "bio_cessation_norm": "Tamaki chekishni butunlay to'xtatish",
-  "about_mentor_name": "**Murabbiy F.I.SH.:** *[O'qituvchi yoki mentor F.I.SH.]*",
-  "about_mentor_contact": "**Hakamlar uchun aloqa:** *[Elektron pochta yoki Telegram]*"
+  "about_mentor_name": "**Ishtirok turi:** Mustaqil mualliflik startapi (yakka tartibda ishlab chiqilgan)",
+  "about_mentor_contact": "**Holati:** Ijtimoiy startaplar tanlovida himoya qilish uchun tayyorlangan"
 }

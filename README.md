@@ -68,7 +68,7 @@ flowchart LR
 
 ### 1. Клонирование и установка зависимостей
 ```bash
-git clone https://github.com/James0010101/Very-good-project.git
+git clone https://github.com/James0010101/MedAI-Longevity-Platform.git
 cd "MedAI Longevity Platform"
 
 python -m venv venv
