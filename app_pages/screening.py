@@ -7,12 +7,14 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
+from core.branding import logo_header_html
 from core.i18n import get_current_language, t
 from core.recommendations import generate_recommendations
 from core.report import generate_fhir_bundle, generate_html_report, generate_pdf_report
 from core.risk_model import (
     compute_risk_trajectory,
     explain_prediction,
+    group_attributions,
     predict_patient,
     simulate_intervention,
 )
@@ -95,7 +97,7 @@ if "patient_data" not in st.session_state:
     st.session_state["patient_data"] = PRESETS["preset_b"].copy()
 
 # Header
-st.title(f"🫀 {t('app_title', lang=lang)}")
+st.markdown(logo_header_html(t("app_title", lang=lang), size=64), unsafe_allow_html=True)
 st.caption(t("app_subtitle", lang=lang))
 
 # Quick Profile Selector
@@ -384,7 +386,7 @@ st.divider()
 
 # Clinical Verdict Banner
 xai_quick = explain_prediction(cur_p, head="chd", m_steps=20)
-attrs_sorted = sorted(xai_quick["attributions_pp"].items(), key=lambda x: x[1], reverse=True)
+attrs_sorted = sorted(group_attributions(xai_quick["attributions_pp"]).items(), key=lambda x: x[1], reverse=True)
 top_driver_key = attrs_sorted[0][0]
 top_driver_val = attrs_sorted[0][1]
 top_driver_desc = t(f"feat_{top_driver_key}", lang=lang)
@@ -428,7 +430,7 @@ if top_items:
         with step_cols[idx]:
             with st.container(border=True):
                 st.markdown(f"#### #{idx+1}. {t(item['title_key'], lang=lang)}")
-                st.caption(f"**Источник / Manba / Source:** {item['source']}")
+                st.caption(f"**{t('rec_source', lang=lang)}:** {item['source']}")
                 st.write(t(item["rationale_key"], lang=lang))
 
                 st.markdown(f"**{t('rec_quant_effect', lang=lang)}**")
@@ -447,14 +449,15 @@ if top_items:
     # Combined Impact Card
     comb = recs.get("combined_impact", {})
     if comb:
+        comb_deltas = comb.get("deltas", {})
         st.markdown(f"#### 🌟 {t('rec_combined_title', lang=lang)}")
         st.info(
             t(
                 "rec_combined_desc",
                 lang=lang,
-                chd=f"{abs(comb.get('delta_chd_pp', 0.0)):.1f}",
-                va=f"{abs(comb.get('delta_heart_age', 0.0)):.1f}",
-                le=f"{abs(comb.get('delta_life_exp', 0.0)):.1f}",
+                chd=f"{abs(comb_deltas.get('delta_chd_pp', 0.0)):.1f}",
+                va=f"{abs(comb_deltas.get('delta_heart_age', 0.0)):.1f}",
+                le=f"{abs(comb_deltas.get('delta_life_exp', 0.0)):.1f}",
             )
         )
 else:
@@ -562,7 +565,7 @@ with tab_xai:
     st.caption(t("xai_desc", lang=lang))
 
     xai_res = explain_prediction(cur_p, head="chd", m_steps=50)
-    attrs = xai_res["attributions_pp"]
+    attrs = group_attributions(xai_res["attributions_pp"])
 
     lbl_inc = t("xai_type_increase", lang=lang)
     lbl_dec = t("xai_type_decrease", lang=lang)

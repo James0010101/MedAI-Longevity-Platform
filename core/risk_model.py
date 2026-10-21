@@ -239,6 +239,21 @@ def explain_prediction(
     }
 
 
+# Correlated inputs describing one clinical factor are shown as a single bar.
+# Integrated Gradients is additive, so summing their attributions is exact.
+ATTRIBUTION_GROUPS: Dict[str, tuple] = {"smoking": ("currentSmoker", "cigsPerDay")}
+
+
+def group_attributions(attributions_pp: Dict[str, float]) -> Dict[str, float]:
+    """Merge correlated features (smoker flag + cigarettes/day) into one factor."""
+    grouped = dict(attributions_pp)
+    for group, members in ATTRIBUTION_GROUPS.items():
+        present = [m for m in members if m in grouped]
+        if present:
+            grouped[group] = round(sum(grouped.pop(m) for m in present), 2)
+    return grouped
+
+
 def simulate_intervention(
     patient: Dict[str, Any],
     changes: Dict[str, Any],

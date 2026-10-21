@@ -11,7 +11,7 @@ import uuid
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.platypus import (
-    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, KeepTogether, HRFlowable
+    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, KeepTogether, HRFlowable, Image
 )
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.pdfbase import pdfmetrics
@@ -19,6 +19,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.graphics.barcode.qr import QrCodeWidget
 from reportlab.graphics.shapes import Drawing
 
+from core.branding import LOGO_PNG_PATH, logo_data_uri
 from core.i18n import t
 from core.units import format_value, from_mgdl
 
@@ -220,9 +221,12 @@ def generate_html_report(
 <body>
 
 <div class="header">
-    <div>
-        <div class="title">MedAI Longevity Platform</div>
-        <div style="font-size: 12px; color: #555;">{t('app_subtitle', lang=lang)}</div>
+    <div style="display:flex; align-items:center; gap:12px;">
+        <img src="{logo_data_uri()}" width="44" height="44" alt="MedAI logo"/>
+        <div>
+            <div class="title">MedAI Longevity Platform</div>
+            <div style="font-size: 12px; color: #555;">{t('app_subtitle', lang=lang)}</div>
+        </div>
     </div>
     <div class="meta">
         <div><strong>{t('report_title', lang=lang)} №:</strong> {report_id}</div>
@@ -569,7 +573,17 @@ def generate_pdf_report(
 
     header_data = [
         [
-            Paragraph("<b>MedAI Longevity Platform</b>", title_style),
+            Table(
+                [[Image(str(LOGO_PNG_PATH), width=30, height=30), Paragraph("<b>MedAI Longevity Platform</b>", title_style)]],
+                colWidths=[38, 252],
+                style=TableStyle([
+                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 0),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+                    ('TOPPADDING', (0, 0), (-1, -1), 0),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+                ]),
+            ),
             Paragraph(f"<b>{t('report_title', lang=lang)}:</b> #{report_id}<br/><b>{t('report_param_age', lang=lang)}:</b> {now_str}<br/><b>Standard:</b> HL7 FHIR / WHO GHO", meta_style),
             qr_drawing
         ],

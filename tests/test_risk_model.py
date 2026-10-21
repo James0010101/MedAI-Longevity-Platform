@@ -137,3 +137,15 @@ def test_compute_risk_trajectory(sample_high_risk_patient):
     for curr, imp in zip(current_records, improved_records):
         assert imp["p_chd_percent"] < curr["p_chd_percent"]
         assert imp["heart_age"] < curr["heart_age"]
+
+
+def test_group_attributions_merges_smoking_features():
+    from core.risk_model import group_attributions
+
+    attrs = {"currentSmoker": -4.2, "cigsPerDay": 6.3, "sysBP": 8.5}
+    grouped = group_attributions(attrs)
+    assert "currentSmoker" not in grouped and "cigsPerDay" not in grouped
+    assert grouped["smoking"] == 2.1
+    assert grouped["sysBP"] == 8.5
+    # additive: totals are preserved
+    assert round(sum(attrs.values()), 2) == round(sum(grouped.values()), 2)

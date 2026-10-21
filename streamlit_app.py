@@ -11,14 +11,17 @@ if str(BASE_DIR) not in sys.path:
 
 import streamlit as st
 from core.i18n import SUPPORTED_LANGUAGES, get_current_language, set_current_language, t
+from core.branding import BRAND_CSS, FAVICON_PATH, logo_header_html
 
 # 1. Page Configuration (Must be first Streamlit command)
 st.set_page_config(
     page_title="MedAI Longevity Platform",
-    page_icon="🫀",
+    page_icon=str(FAVICON_PATH),
     layout="wide",
     initial_sidebar_state="expanded",
 )
+
+st.markdown(BRAND_CSS, unsafe_allow_html=True)
 
 # 2. Session State Initialization
 if "lang" not in st.session_state:
@@ -29,15 +32,15 @@ if "units" not in st.session_state:
 
 # 3. Sidebar Controls: Language & Units
 with st.sidebar:
-    st.markdown("### 🫀 **MedAI Longevity**")
+    st.markdown(logo_header_html("MedAI Longevity", size=40, title_tag="h3"), unsafe_allow_html=True)
     st.caption("Cardiovascular Screening & Longevity Platform")
     st.divider()
 
     # Language Selector
     lang_labels = {
-        "ru": "🇷🇺 Русский",
-        "uz": "🇺🇿 O'zbekcha (Lotin)",
-        "en": "🇬🇧 English",
+        "ru": "Русский",
+        "uz": "O'zbekcha (Lotin)",
+        "en": "English",
     }
     current_lang = get_current_language()
     selected_lang = st.selectbox(
