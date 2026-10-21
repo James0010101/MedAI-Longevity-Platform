@@ -74,10 +74,15 @@ with st.sidebar:
 # 4. Multi-Page Navigation
 pages = [
     st.Page(
+        "app_pages/overview.py",
+        title=t("nav_overview"),
+        icon="🎬",
+        default=True,
+    ),
+    st.Page(
         "app_pages/screening.py",
         title=t("nav_screening"),
         icon="🩺",
-        default=True,
     ),
     st.Page(
         "app_pages/methodology.py",

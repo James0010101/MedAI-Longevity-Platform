@@ -9,6 +9,7 @@ ASSETS_DIR = Path(__file__).resolve().parent.parent / "assets"
 LOGO_SVG_PATH = ASSETS_DIR / "logo.svg"
 LOGO_PNG_PATH = ASSETS_DIR / "logo.png"
 FAVICON_PATH = ASSETS_DIR / "favicon.png"
+PROMO_VIDEO_PATH = ASSETS_DIR / "promo_uz.mp4"
 
 BRAND_BLUE = "#2F6BFF"
 BRAND_CYAN = "#3CC8F0"
