@@ -3,7 +3,7 @@ Unit tests for core/report.py
 """
 import json
 import pytest
-from core.report import generate_fhir_bundle, generate_html_report
+from core.report import generate_fhir_bundle, generate_html_report, generate_pdf_report
 
 
 @pytest.fixture
@@ -92,3 +92,20 @@ def test_generate_fhir_bundle(mock_data):
     assert "2093-3" in loinc_codes  # Cholesterol
     assert "1558-6" in loinc_codes  # Fasting glucose
     assert "39156-5" in loinc_codes  # BMI
+
+
+def test_generate_pdf_report(mock_data):
+    patient, prediction, recs = mock_data
+    pdf_bytes = generate_pdf_report(patient, prediction, recs, lang="ru", units="mmol")
+
+    assert isinstance(pdf_bytes, bytes)
+    assert len(pdf_bytes) > 5000
+    assert pdf_bytes.startswith(b"%PDF-")
+
+
+def test_generate_pdf_report_all_languages(mock_data):
+    patient, prediction, recs = mock_data
+    for lang in ["ru", "uz", "en"]:
+        pdf_bytes = generate_pdf_report(patient, prediction, recs, lang=lang, units="mmol")
+        assert pdf_bytes.startswith(b"%PDF-")
+        assert len(pdf_bytes) > 5000

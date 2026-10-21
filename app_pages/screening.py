@@ -9,7 +9,7 @@ import streamlit as st
 
 from core.i18n import get_current_language, t
 from core.recommendations import generate_recommendations
-from core.report import generate_fhir_bundle, generate_html_report
+from core.report import generate_fhir_bundle, generate_html_report, generate_pdf_report
 from core.risk_model import (
     compute_risk_trajectory,
     explain_prediction,
@@ -716,6 +716,15 @@ with tab_exp:
         with st.container(border=True):
             st.markdown(f"#### {t('export_report_title', lang=lang)}")
             st.write(t("export_report_desc", lang=lang))
+            pdf_bytes = generate_pdf_report(cur_p, prediction, recs, lang=lang, units=units)
+            st.download_button(
+                label=t("export_pdf_btn", lang=lang),
+                data=pdf_bytes,
+                file_name=f"MedAI_Clinical_Report_{int(cur_p.get('age', 50))}_{'M' if cur_p.get('male', 1) else 'F'}.pdf",
+                mime="application/pdf",
+                type="primary",
+                width="stretch",
+            )
             html_content = generate_html_report(cur_p, prediction, recs, lang=lang, units=units)
             st.download_button(
                 label=t("export_html_btn", lang=lang),

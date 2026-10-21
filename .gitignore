@@ -19,3 +19,4 @@ screen.png
 # Keep model weights and split data
 !models/*.npz
 !data/*.npz
+promo/
