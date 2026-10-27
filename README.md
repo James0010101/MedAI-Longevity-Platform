@@ -1,146 +1,158 @@
-# MedAI Longevity Platform 🫀
+<div align="center">
 
-[![Python 3.12](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/)
-[![Streamlit 1.61](https://img.shields.io/badge/Streamlit-1.61-FF4B4B.svg)](https://streamlit.io/)
-[![NumPy 2.4](https://img.shields.io/badge/NumPy-2.4-013243.svg)](https://numpy.org/)
-[![Tests Passing](https://img.shields.io/badge/Tests-38%20Passed-006c49.svg)](tests/)
-[![Languages](https://img.shields.io/badge/Languages-RU%20%7C%20UZ%20%7C%20EN-blueviolet.svg)](i18n/)
-[![FHIR R4](https://img.shields.io/badge/Interoperability-HL7%20FHIR%20R4-orange.svg)](core/report.py)
+<img src="https://raw.githubusercontent.com/James0010101/MedAI-Longevity-Platform/main/assets/header.svg" alt="MedAI Longevity Platform" width="100%"/>
 
-**MedAI Longevity Platform** — открытая цифровая веб-платформа для раннего скрининга сердечно-сосудистого риска, оценки сосудистого возраста и персонализированного продления активной жизни в Республике Узбекистан.
+<br/>
 
-Проект разработан в рамках конкурса социально полезных студенческих инновационных стартапов при Агентстве по образованию / Министерстве высшего образования, науки и инноваций Республики Узбекистан.
+[![Python 3.11+](https://img.shields.io/badge/Python-3.11+-3572A5?style=flat-square&logo=python&logoColor=white)](https://python.org)
+[![Pure NumPy](https://img.shields.io/badge/ML-Pure%20NumPy-013243?style=flat-square&logo=numpy&logoColor=white)](#)
+[![Tests](https://img.shields.io/badge/Tests-38%20passed-00e68a?style=flat-square)](#-reproduce-from-scratch)
+[![License](https://img.shields.io/badge/License-Research-8b949e?style=flat-square)](#)
+[![Trilingual](https://img.shields.io/badge/i18n-RU%20·%20UZ%20·%20EN-ffb800?style=flat-square)](#)
 
----
+**Cardiovascular risk prediction platform for Uzbekistan.**
+<br/>
+*Neural network from scratch · Clinical validation · Explainable AI · HL7 FHIR R4 export*
 
-## 📸 Сравнение интерфейса: «До» и «После»
-
-| До модернизации (Устаревший прототип) | После модернизации (Текущая версия 2.0) |
-|:---:|:---:|
-| ![До модернизации](docs/screenshots/before.png) | ![После модернизации](docs/screenshots/after_1920.png) |
-| *Смешанный язык, захардкоженные константы сосудистого возраста, отсутствие связи ИИ с рекомендациями, перегруженный вид* | *Чистый строгий дизайн, честные доверительные интервалы, аналитическая формула D'Agostino, таблицы ВОЗ для РУз, узбекский язык* |
+</div>
 
 ---
 
-## 🎯 Ключевые возможности и архитектура
+## What It Does
 
-```mermaid
-flowchart LR
-    U["Ввод данных пациента<br/>(ммоль/л или мг/дл)"] --> V["Валидация и перевод<br/>в вектор признаков"]
-    V --> NN["Многозадачная нейросеть<br/>(Pure NumPy MultiTask MLP)"]
-    V --> F["Формула D'Agostino 2008<br/>(Circulation 2008)"]
-    F --> W["Таблицы ВОЗ (Узбекистан 2023)<br/>(Оценка продолжительности жизни)"]
-    NN --> XAI["Integrated Gradients (XAI)<br/>(Анализ вклада каждого фактора)"]
-    V --> R["Пороги доказательной медицины<br/>(ESC/ESH 2018, WHO, NCEP)"]
-    R --> S["Виртуальная симуляция шагов<br/>(Расчёт снижения риска нейросетью)"]
-    NN --> S
-    S --> TOP["ТОП-3 приоритетных шага<br/>по снижению риска"]
-```
+MedAI predicts **10-year coronary heart disease risk** and screens for **diabetes** using a multi-task neural network built entirely in NumPy — no sklearn, no PyTorch, no TensorFlow. Every weight, gradient, and activation is computed from first principles.
 
-1. **10-летний риск ИБС (Нейросеть):** Обучена на исходах реальной когорты Framingham Heart Study с расчетом эпистемической неопределенности через Monte Carlo Dropout ($\pm\sigma$).
-2. **Скрининг сахарного диабета (Нейросеть):** Вторая классификационная голова выявляет вероятность текущего недиагностированного диабета / предиабета (ROC-AUC **0.884**).
-3. **Сердечно-сосудистый возраст (Формула):** Точная аналитическая замкнутая формула по модели D'Agostino et al. (*Circulation* 2008). Устранена критическая ошибка старого кода со «схлопыванием» в константу.
-4. **Оценка продолжительности жизни (Таблицы ВОЗ для Узбекистана):** Интеграция официальной демографической сетки ВОЗ (2023) с сосудистой поправкой.
-5. **Объяснимый ИИ (Integrated Gradients):** Вклад каждого фактора рассчитывается в процентных пунктах относительно эталонного здорового человека того же возраста и пола.
-6. **Персонализированные рекомендации:** Клинические рекомендации ВОЗ/ESC соединены с симуляцией нейросетью: шаги ранжируются по величине снижения риска (например: «Отказ от курения снизит риск на 4.2 п.п. и омолодит сердце на 5.1 лет»).
-7. **Интероперабельность:** Экспорт печатного отчёта в HTML/PDF и пакета в международном стандарте **HL7 FHIR R4** с верифицированными кодами LOINC.
-8. **Триязычность:** Русский (`ru`), Узбекский на латинице (`uz`) и Английский (`en`) со 100% паритетом ключей.
-9. **Конвертер единиц:** Поддержка лабораторного стандарта Узбекистана и СНГ (**ммоль/л**) и международного (**мг/дл**).
+The clinical pipeline combines the neural network's predictions with the **D'Agostino 2008** analytical formula, **WHO mortality tables for Uzbekistan** (2023), and **ESC/WHO clinical guidelines** to produce actionable, personalized health recommendations ranked by impact.
 
 ---
 
-## 📊 Честные аудированные метрики качества (Тестовая выборка $N=636$)
+## Architecture
 
-Каждое число получено автоматическим скриптом валидации без захардкоженных констант:
+<div align="center">
 
-| Целевая задача | Модель MedAI (Нейросеть) | Базовый LogReg | Референс D'Agostino 2008 | Brier Score |
+<img src="https://raw.githubusercontent.com/James0010101/MedAI-Longevity-Platform/main/assets/architecture.svg" alt="System Architecture" width="100%"/>
+
+</div>
+
+---
+
+## Validated Metrics
+
+Every number below is produced by an automated validation script on a held-out test set (*N* = 636), with no hardcoded constants:
+
+| Target | MedAI Neural Net | Baseline LogReg | Reference (D'Agostino 2008) | Brier Score |
 |:---|:---:|:---:|:---:|:---:|
-| **10-летний риск ИБС (CHD)** | **0.675** [0.607, 0.735] | 0.698 [0.638, 0.758] | 0.700 [0.641, 0.760] | **0.1210** |
-| **Скрининг диабета** | **0.884** [0.738, 0.998] | 0.827 | — | **0.0242** |
+| **10-year CHD risk** | **0.675** [0.607, 0.735] | 0.698 [0.638, 0.758] | 0.700 [0.641, 0.760] | **0.1210** |
+| **Diabetes screening** | **0.884** [0.738, 0.998] | 0.827 | — | **0.0242** |
 
-### Операционные характеристики при порогах 10-летнего риска:
-- **Порог 10% (Промежуточный риск):** Чувствительность = **75.26%**, Специфичность = **53.62%**
-- **Порог 20% (Высокий клинический риск):** Чувствительность = **40.21%**, Специфичность = **82.56%**
+<details>
+<summary><strong>Operating Characteristics at Clinical Thresholds</strong></summary>
+<br/>
+
+| Threshold | Sensitivity | Specificity |
+|:---|:---:|:---:|
+| **10% (Intermediate risk)** | 75.26% | 53.62% |
+| **20% (High clinical risk)** | 40.21% | 82.56% |
+
+</details>
 
 ---
 
-## 🚀 Быстрый запуск
+## Key Capabilities
 
-### 1. Клонирование и установка зависимостей
+<table>
+<tr>
+<td width="50%" valign="top">
+
+### 🧠 Neural Network (Pure NumPy)
+Multi-task MLP with Swish activation, Dropout regularization, and Adam optimizer. No ML frameworks — every operation hand-coded for educational transparency.
+
+### 🔬 Explainable AI
+Integrated Gradients computes each factor's contribution in percentage points relative to a healthy reference of the same age and sex.
+
+### 💊 Personalized Recommendations
+Clinical guidelines (WHO/ESC) merged with neural network delta simulations: steps ranked by risk reduction magnitude.
+
+</td>
+<td width="50%" valign="top">
+
+### ❤️ Cardiovascular Age
+Closed-form D'Agostino 2008 formula. Critical bug in the original codebase (constant collapse) identified and fixed.
+
+### 📊 WHO Life Tables
+Official 2023 demographic grid for Uzbekistan with vascular age correction for life expectancy estimation.
+
+### 📦 Interoperability
+Printable HTML/PDF report + HL7 FHIR R4 bundle with verified LOINC codes. Unit converter: mmol/L ⇄ mg/dL.
+
+</td>
+</tr>
+</table>
+
+---
+
+## Quick Start
+
 ```bash
+# Clone and install
 git clone https://github.com/James0010101/MedAI-Longevity-Platform.git
 cd "MedAI Longevity Platform"
-
-python -m venv venv
-# Windows:
-.\venv\Scripts\activate
-# Linux/macOS:
-source venv/bin/activate
-
+python -m venv venv && venv\Scripts\activate  # Windows
 pip install -r requirements.txt
-```
 
-### 2. Запуск веб-приложения
-```bash
+# Launch
 streamlit run streamlit_app.py
 ```
-Приложение откроется в браузере по адресу `http://localhost:8501`.
+
+The app opens at `http://localhost:8501`.
 
 ---
 
-## 🔬 Воспроизведение полного цикла ML
+## 🔬 Reproduce From Scratch
 
-Любой исследователь или эксперт комиссии может воспроизвести обучение и валидацию «с нуля» за 3 команды:
+Any researcher can reproduce training and validation in 4 commands:
 
 ```bash
-# 1. Подготовка данных и стратифицированное разбиение 70/15/15
-python scripts/prepare_data.py
-
-# 2. Загрузка официальных таблиц смертности ВОЗ для Узбекистана
-python scripts/fetch_who_life_table.py
-
-# 3. Обучение нейросети, расчет ROC-AUC с ДИ и сохранение метрик
-python scripts/train_model.py
-
-# 4. Запуск полного набора из 38 автоматических тестов
-pytest -q
+python scripts/prepare_data.py          # Stratified split 70/15/15
+python scripts/fetch_who_life_table.py  # WHO mortality tables for Uzbekistan
+python scripts/train_model.py           # Train neural network, compute ROC-AUC with CI
+pytest -q                               # Run all 38 automated tests
 ```
 
 ---
 
-## 📁 Структура репозитория
+## Repository Structure
 
 ```
 MedAI Longevity Platform/
-├── streamlit_app.py            # Главная точка входа: конфигурация, i18n, st.navigation
+├── streamlit_app.py            # Main entry: config, i18n, st.navigation
+├── neural_network.py           # Pure NumPy MultiTask MLP (Swish, Dropout, Adam, IG)
 ├── app_pages/
-│   ├── screening.py            # Основной экран: форма, метрики, ТОП-3 шага, XAI, экспорт
-│   ├── methodology.py          # Страница «Методология»: реальный Loss, ROC-AUC, калибровка
-│   └── about.py                # Страница «О проекте»: актуальность для РУз, дорожная карта
+│   ├── screening.py            # Risk form, metrics, top-3 actions, XAI, export
+│   ├── methodology.py          # Loss curves, ROC-AUC, calibration
+│   └── about.py                # Project context, roadmap
 ├── core/
-│   ├── clinical.py             # D'Agostino 2008, Heart Age, таблицы ВОЗ Узбекистана
-│   ├── config.py               # Константы, пути, диапазоны признаков
-│   ├── i18n.py                 # Движок интернационализации (RU, UZ, EN)
-│   ├── recommendations.py      # Клинические правила + нейросетевая симуляция дельт
-│   ├── report.py               # Генерация HTML-отчета и пакета HL7 FHIR R4
-│   ├── risk_model.py           # Загрузка весов, инференс, Integrated Gradients, симуляции
-│   ├── thresholds.py           # Пороги клинических рекомендаций (ESC, WHO, NCEP)
-│   └── units.py                # Двунаправленная конвертация ммоль/л ⇄ мг/дл
-├── neural_network.py           # Чистая NumPy-реализация MultiTask MLP (Swish, Dropout, Adam, IG)
-├── scripts/
-│   ├── prepare_data.py         # Предобработка Framingham и стратифицированный сплит
-│   ├── fetch_who_life_table.py # Загрузка и расчет таблиц смертности ВОЗ РУз
-│   └── train_model.py          # Скрипт обучения модели и генерации metrics.json
-├── data/                       # Данные (Framingham, таблицы ВОЗ)
-├── models/                     # Артефакты (model_weights.npz, metrics.json, model_card.json)
-├── i18n/                       # Словари локализации (ru.json, uz.json, en.json)
-├── tests/                      # 38 автоматических тестов (клиника, ML, XAI, UI smoke)
-├── docs/                       # Документация (PROGRESS, MODEL_CARD, LIMITATIONS, DEMO_SCRIPT)
-└── requirements.txt            # Совместимые зависимости
+│   ├── clinical.py             # D'Agostino 2008, Heart Age, WHO tables
+│   ├── risk_model.py           # Inference, Integrated Gradients, simulations
+│   ├── recommendations.py      # Clinical rules + neural net delta ranking
+│   ├── report.py               # HTML report + HL7 FHIR R4 bundle
+│   ├── units.py                # mmol/L ⇄ mg/dL bidirectional conversion
+│   └── ...                     # config, i18n, thresholds
+├── scripts/                    # Data prep, WHO fetch, training
+├── tests/                      # 38 automated tests (clinical, ML, XAI, UI)
+├── data/                       # Framingham dataset, WHO tables
+├── models/                     # Weights, metrics, model card
+└── i18n/                       # ru.json, uz.json, en.json
 ```
 
 ---
 
-## ⚖️ Медицинское и правовое уведомление
+## Medical & Legal Disclaimer
 
-Платформа **MedAI Longevity Platform** является научно-образовательным и исследовательским прототипом. Она предназначена для первичной стратификации рисков, просвещения граждан и поддержки принятия решений, но **не заменяет очную консультацию врача**, не ставит окончательный клинический диагноз и не назначает медикаментозное лечение.
+MedAI Longevity Platform is a **research and educational prototype**. It is intended for primary risk stratification and public health awareness. It **does not replace a physician consultation**, does not make final clinical diagnoses, and does not prescribe medication.
+
+---
+
+<div align="center">
+<sub>Built by <a href="https://github.com/James0010101">Jahongir Sadullayev</a> · Tashkent, Uzbekistan 🇺🇿</sub>
+</div>

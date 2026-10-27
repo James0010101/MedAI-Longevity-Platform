@@ -1,0 +1,141 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="340" viewBox="0 0 900 340">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0a0f0d"/>
+      <stop offset="100%" style="stop-color:#0d1117"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#00e68a" opacity="0.5"/>
+    </marker>
+  </defs>
+
+  <rect width="900" height="340" fill="url(#bg)" rx="8"/>
+  <rect width="900" height="340" rx="8" fill="none" stroke="#1a3a28" stroke-width="1"/>
+
+  <!-- Title -->
+  <text x="450" y="30" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="12" font-weight="600" fill="#00e68a" letter-spacing="3" opacity="0.7">SYSTEM ARCHITECTURE</text>
+
+  <!-- Input Layer Box -->
+  <g transform="translate(30, 55)">
+    <rect width="140" height="220" rx="8" fill="#0d1a14" stroke="#1a3a28" stroke-width="1.2"/>
+    <text x="70" y="24" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="10" font-weight="600" fill="#00e68a" letter-spacing="1">INPUT DATA</text>
+    <line x1="15" y1="35" x2="125" y2="35" stroke="#1a3a28" stroke-width="0.8"/>
+    <text x="70" y="58" text-anchor="middle" font-family="'Consolas', monospace" font-size="9" fill="#8b949e">age</text>
+    <text x="70" y="76" text-anchor="middle" font-family="'Consolas', monospace" font-size="9" fill="#8b949e">sex</text>
+    <text x="70" y="94" text-anchor="middle" font-family="'Consolas', monospace" font-size="9" fill="#8b949e">total_chol</text>
+    <text x="70" y="112" text-anchor="middle" font-family="'Consolas', monospace" font-size="9" fill="#8b949e">hdl_chol</text>
+    <text x="70" y="130" text-anchor="middle" font-family="'Consolas', monospace" font-size="9" fill="#8b949e">systolic_bp</text>
+    <text x="70" y="148" text-anchor="middle" font-family="'Consolas', monospace" font-size="9" fill="#8b949e">bp_treatment</text>
+    <text x="70" y="166" text-anchor="middle" font-family="'Consolas', monospace" font-size="9" fill="#8b949e">smoker</text>
+    <text x="70" y="184" text-anchor="middle" font-family="'Consolas', monospace" font-size="9" fill="#8b949e">diabetes</text>
+    <text x="70" y="202" text-anchor="middle" font-family="'Consolas', monospace" font-size="9" fill="#8b949e">bmi · glucose</text>
+  </g>
+
+  <!-- Arrow 1 -->
+  <line x1="175" y1="165" x2="210" y2="165" stroke="#00e68a" stroke-width="1.2" opacity="0.4" marker-end="url(#arrow)"/>
+
+  <!-- Neural Network Box -->
+  <g transform="translate(215, 55)">
+    <rect width="200" height="220" rx="8" fill="#0d1a14" stroke="#00e68a" stroke-width="1.5" opacity="0.8"/>
+    <text x="100" y="24" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="10" font-weight="600" fill="#00e68a" letter-spacing="1">MULTITASK MLP</text>
+    <line x1="15" y1="35" x2="185" y2="35" stroke="#1a3a28" stroke-width="0.8"/>
+
+    <!-- Network visualization -->
+    <g transform="translate(20, 50)">
+      <!-- Input nodes -->
+      <circle cx="15" cy="15" r="5" fill="#1a3a28" stroke="#00e68a" stroke-width="1"/>
+      <circle cx="15" cy="40" r="5" fill="#1a3a28" stroke="#00e68a" stroke-width="1"/>
+      <circle cx="15" cy="65" r="5" fill="#1a3a28" stroke="#00e68a" stroke-width="1"/>
+      <circle cx="15" cy="90" r="5" fill="#1a3a28" stroke="#00e68a" stroke-width="1"/>
+      <circle cx="15" cy="115" r="5" fill="#1a3a28" stroke="#00e68a" stroke-width="1"/>
+      <!-- Hidden 1 -->
+      <circle cx="60" cy="25" r="5" fill="#1a3a28" stroke="#ffb800" stroke-width="1"/>
+      <circle cx="60" cy="55" r="5" fill="#1a3a28" stroke="#ffb800" stroke-width="1"/>
+      <circle cx="60" cy="85" r="5" fill="#1a3a28" stroke="#ffb800" stroke-width="1"/>
+      <circle cx="60" cy="115" r="5" fill="#1a3a28" stroke="#ffb800" stroke-width="1"/>
+      <!-- Hidden 2 -->
+      <circle cx="105" cy="35" r="5" fill="#1a3a28" stroke="#00d4ff" stroke-width="1"/>
+      <circle cx="105" cy="65" r="5" fill="#1a3a28" stroke="#00d4ff" stroke-width="1"/>
+      <circle cx="105" cy="95" r="5" fill="#1a3a28" stroke="#00d4ff" stroke-width="1"/>
+      <!-- Output -->
+      <circle cx="145" cy="40" r="6" fill="#00e68a" opacity="0.3" filter="url(#glow)"/>
+      <circle cx="145" cy="40" r="5" fill="#1a3a28" stroke="#00e68a" stroke-width="1.5"/>
+      <circle cx="145" cy="80" r="6" fill="#00e68a" opacity="0.3" filter="url(#glow)"/>
+      <circle cx="145" cy="80" r="5" fill="#1a3a28" stroke="#00e68a" stroke-width="1.5"/>
+      <!-- Connections (sparse for clarity) -->
+      <g opacity="0.15" stroke="#00e68a" stroke-width="0.5">
+        <line x1="20" y1="15" x2="55" y2="25"/>
+        <line x1="20" y1="15" x2="55" y2="55"/>
+        <line x1="20" y1="40" x2="55" y2="25"/>
+        <line x1="20" y1="40" x2="55" y2="85"/>
+        <line x1="20" y1="65" x2="55" y2="55"/>
+        <line x1="20" y1="65" x2="55" y2="115"/>
+        <line x1="20" y1="90" x2="55" y2="85"/>
+        <line x1="20" y1="115" x2="55" y2="115"/>
+        <line x1="65" y1="25" x2="100" y2="35"/>
+        <line x1="65" y1="25" x2="100" y2="65"/>
+        <line x1="65" y1="55" x2="100" y2="35"/>
+        <line x1="65" y1="55" x2="100" y2="95"/>
+        <line x1="65" y1="85" x2="100" y2="65"/>
+        <line x1="65" y1="115" x2="100" y2="95"/>
+        <line x1="110" y1="35" x2="140" y2="40"/>
+        <line x1="110" y1="65" x2="140" y2="40"/>
+        <line x1="110" y1="65" x2="140" y2="80"/>
+        <line x1="110" y1="95" x2="140" y2="80"/>
+      </g>
+    </g>
+
+    <!-- Labels -->
+    <text x="100" y="192" text-anchor="middle" font-family="'Consolas', monospace" font-size="8" fill="#8b949e">Swish · Dropout · Adam</text>
+    <text x="100" y="205" text-anchor="middle" font-family="'Consolas', monospace" font-size="8" fill="#8b949e">Integrated Gradients XAI</text>
+  </g>
+
+  <!-- Arrow 2 -->
+  <line x1="420" y1="165" x2="455" y2="135" stroke="#00e68a" stroke-width="1.2" opacity="0.4" marker-end="url(#arrow)"/>
+  <line x1="420" y1="165" x2="455" y2="195" stroke="#00e68a" stroke-width="1.2" opacity="0.4" marker-end="url(#arrow)"/>
+
+  <!-- Clinical Engine Box -->
+  <g transform="translate(460, 55)">
+    <rect width="170" height="100" rx="8" fill="#0d1a14" stroke="#1a3a28" stroke-width="1.2"/>
+    <text x="85" y="24" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="10" font-weight="600" fill="#ffb800" letter-spacing="1">CLINICAL ENGINE</text>
+    <line x1="15" y1="35" x2="155" y2="35" stroke="#1a3a28" stroke-width="0.8"/>
+    <text x="85" y="55" text-anchor="middle" font-family="'Consolas', monospace" font-size="9" fill="#8b949e">D'Agostino 2008</text>
+    <text x="85" y="70" text-anchor="middle" font-family="'Consolas', monospace" font-size="9" fill="#8b949e">Heart Age Formula</text>
+    <text x="85" y="85" text-anchor="middle" font-family="'Consolas', monospace" font-size="9" fill="#8b949e">WHO Life Tables (UZ)</text>
+  </g>
+
+  <!-- Recommendations Box -->
+  <g transform="translate(460, 175)">
+    <rect width="170" height="100" rx="8" fill="#0d1a14" stroke="#1a3a28" stroke-width="1.2"/>
+    <text x="85" y="24" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="10" font-weight="600" fill="#00d4ff" letter-spacing="1">RECOMMENDATIONS</text>
+    <line x1="15" y1="35" x2="155" y2="35" stroke="#1a3a28" stroke-width="0.8"/>
+    <text x="85" y="55" text-anchor="middle" font-family="'Consolas', monospace" font-size="9" fill="#8b949e">WHO/ESC Guidelines</text>
+    <text x="85" y="70" text-anchor="middle" font-family="'Consolas', monospace" font-size="9" fill="#8b949e">Delta Simulation</text>
+    <text x="85" y="85" text-anchor="middle" font-family="'Consolas', monospace" font-size="9" fill="#8b949e">Risk Reduction Rank</text>
+  </g>
+
+  <!-- Arrow 3 -->
+  <line x1="635" y1="135" x2="670" y2="165" stroke="#00e68a" stroke-width="1.2" opacity="0.4" marker-end="url(#arrow)"/>
+  <line x1="635" y1="195" x2="670" y2="165" stroke="#00e68a" stroke-width="1.2" opacity="0.4" marker-end="url(#arrow)"/>
+
+  <!-- Output Box -->
+  <g transform="translate(675, 80)">
+    <rect width="190" height="170" rx="8" fill="#0d1a14" stroke="#00e68a" stroke-width="1.5" opacity="0.8"/>
+    <text x="95" y="24" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="10" font-weight="600" fill="#00e68a" letter-spacing="1">OUTPUT</text>
+    <line x1="15" y1="35" x2="175" y2="35" stroke="#1a3a28" stroke-width="0.8"/>
+    <text x="95" y="58" text-anchor="middle" font-family="'Consolas', monospace" font-size="9" fill="#e6edf3">10-year CHD risk %</text>
+    <text x="95" y="76" text-anchor="middle" font-family="'Consolas', monospace" font-size="9" fill="#e6edf3">Diabetes screening</text>
+    <text x="95" y="94" text-anchor="middle" font-family="'Consolas', monospace" font-size="9" fill="#e6edf3">Cardiovascular age</text>
+    <text x="95" y="112" text-anchor="middle" font-family="'Consolas', monospace" font-size="9" fill="#e6edf3">Life expectancy</text>
+    <text x="95" y="130" text-anchor="middle" font-family="'Consolas', monospace" font-size="9" fill="#e6edf3">XAI factor weights</text>
+    <text x="95" y="148" text-anchor="middle" font-family="'Consolas', monospace" font-size="9" fill="#e6edf3">Ranked action steps</text>
+    <text x="95" y="164" text-anchor="middle" font-family="'Consolas', monospace" font-size="9" fill="#8b949e">HL7 FHIR R4 · HTML/PDF</text>
+  </g>
+
+  <!-- Pipeline label -->
+  <text x="450" y="320" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="10" fill="#8b949e" opacity="0.5">Framingham Dataset → Stratified Split 70/15/15 → Train → Validate → Deploy</text>
+</svg>
